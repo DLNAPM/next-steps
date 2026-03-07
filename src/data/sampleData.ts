@@ -1,0 +1,87 @@
+import { FinancialRecord } from '../types';
+
+export const SAMPLE_DATA: FinancialRecord[] = [
+  // ASSETS
+  {
+    id: 'demo-asset-1',
+    userId: 'demo-user',
+    type: 'asset',
+    category: 'bank',
+    name: 'Chase Checking Account',
+    institutionName: 'Chase Bank',
+    accountNumber: '987654321',
+    url: 'https://www.chase.com',
+    notes: 'Joint account with spouse. Used for daily expenses.',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
+  {
+    id: 'demo-asset-2',
+    userId: 'demo-user',
+    type: 'asset',
+    category: 'real-estate',
+    name: 'Family Home',
+    notes: 'Primary residence. Title held in joint tenancy.',
+    deedUrl: 'https://example.com/deed.pdf',
+    countyClerkUrl: 'https://countyclerk.example.gov/property/12345',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
+  {
+    id: 'demo-asset-3',
+    userId: 'demo-user',
+    type: 'asset',
+    category: 'investment',
+    name: 'Fidelity 401(k)',
+    institutionName: 'Fidelity',
+    accountNumber: '456-789-012',
+    url: 'https://www.fidelity.com',
+    notes: 'Beneficiary is set to spouse 100%.',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
+  
+  // DEBTS
+  {
+    id: 'demo-debt-1',
+    userId: 'demo-user',
+    type: 'debt',
+    category: 'mortgage',
+    name: 'Home Mortgage',
+    lenderName: 'Wells Fargo',
+    accountNumber: '123-456-7890',
+    url: 'https://www.wellsfargo.com/mortgage',
+    notes: 'Monthly payment due on the 1st.',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
+  {
+    id: 'demo-debt-2',
+    userId: 'demo-user',
+    type: 'debt',
+    category: 'credit-card',
+    name: 'Amex Platinum',
+    lenderName: 'American Express',
+    accountNumber: '3712-000000-00000',
+    url: 'https://www.americanexpress.com',
+    notes: 'Used for travel expenses. Pay in full each month.',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
+
+  // INSURANCE
+  {
+    id: 'demo-ins-1',
+    userId: 'demo-user',
+    type: 'insurance',
+    companyName: 'New York Life',
+    name: 'Term Life Policy',
+    accountNumber: 'POL-99887766',
+    amount: '$1,000,000',
+    representativeName: 'John Smith',
+    representativeContact: 'john.smith@nyl.com | 555-0123',
+    notes: '20-year term policy expiring in 2035.',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  }
+] as FinancialRecord[];

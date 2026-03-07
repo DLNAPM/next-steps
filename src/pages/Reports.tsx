@@ -1,0 +1,202 @@
+import React from 'react';
+import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
+import { Printer, FileText, PieChart } from 'lucide-react';
+
+export default function Reports() {
+  const { records } = useData();
+  const { user } = useAuth();
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const assets = records.filter(r => r.type === 'asset');
+  const debts = records.filter(r => r.type === 'debt');
+  const insurance = records.filter(r => r.type === 'insurance');
+
+  const assetCategories = assets.reduce((acc, curr) => {
+    const cat = (curr as any).category || 'other';
+    acc[cat] = (acc[cat] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const debtCategories = debts.reduce((acc, curr) => {
+    const cat = (curr as any).category || 'other';
+    acc[cat] = (acc[cat] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return (
+    <div className="space-y-8 print:space-y-4">
+      <div className="flex items-center justify-between print:hidden">
+        <div>
+          <h2 className="text-3xl font-bold text-slate-900">Financial Report</h2>
+          <p className="text-slate-500 mt-1">Summary of all recorded assets, debts, and policies.</p>
+        </div>
+        <button
+          onClick={handlePrint}
+          className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors shadow-sm"
+        >
+          <Printer className="w-5 h-5" />
+          Print Report
+        </button>
+      </div>
+
+      {/* Print Header */}
+      <div className="hidden print:block mb-8 border-b border-slate-200 pb-4">
+        <h1 className="text-2xl font-bold text-slate-900">Next Steps - Family Financial Record</h1>
+        <p className="text-slate-500">Generated for {user?.displayName} on {new Date().toLocaleDateString()}</p>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:grid-cols-3 print:gap-4">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 print:border print:shadow-none">
+          <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-2">Total Assets</h3>
+          <p className="text-3xl font-bold text-emerald-600">{assets.length}</p>
+          <div className="mt-4 space-y-1">
+            {Object.entries(assetCategories).map(([cat, count]) => (
+              <div key={cat} className="flex justify-between text-sm">
+                <span className="capitalize text-slate-600">{cat.replace('-', ' ')}</span>
+                <span className="font-medium text-slate-900">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 print:border print:shadow-none">
+          <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-2">Total Debts</h3>
+          <p className="text-3xl font-bold text-rose-600">{debts.length}</p>
+          <div className="mt-4 space-y-1">
+            {Object.entries(debtCategories).map(([cat, count]) => (
+              <div key={cat} className="flex justify-between text-sm">
+                <span className="capitalize text-slate-600">{cat.replace('-', ' ')}</span>
+                <span className="font-medium text-slate-900">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 print:border print:shadow-none">
+          <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-2">Insurance Policies</h3>
+          <p className="text-3xl font-bold text-blue-600">{insurance.length}</p>
+          <div className="mt-4 text-sm text-slate-600">
+            <p>Ensure beneficiaries are up to date on all policies.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Detailed Lists */}
+      <div className="space-y-8 print:space-y-6">
+        <section>
+          <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-emerald-600" />
+            Assets Detail
+          </h3>
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden print:border-slate-300">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50 print:bg-slate-100">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Category</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Details</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Notes</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {assets.length === 0 ? (
+                  <tr><td colSpan={4} className="px-6 py-4 text-center text-slate-500">No assets recorded.</td></tr>
+                ) : (
+                  assets.map((record) => (
+                    <tr key={record.id} className="break-inside-avoid">
+                      <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{record.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{(record as any).category?.replace('-', ' ')}</td>
+                      <td className="px-6 py-4 text-sm text-slate-500">
+                        {(record as any).institutionName && <div className="font-medium">{(record as any).institutionName}</div>}
+                        {(record as any).accountNumber && <div>Acct: {(record as any).accountNumber}</div>}
+                        {(record as any).url && <a href={(record as any).url} className="text-indigo-600 hover:underline print:text-slate-900 print:no-underline">{(record as any).url}</a>}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500 max-w-xs truncate print:whitespace-normal">{record.notes || '-'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-rose-600" />
+            Debts Detail
+          </h3>
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden print:border-slate-300">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50 print:bg-slate-100">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Category</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Details</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Notes</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {debts.length === 0 ? (
+                  <tr><td colSpan={4} className="px-6 py-4 text-center text-slate-500">No debts recorded.</td></tr>
+                ) : (
+                  debts.map((record) => (
+                    <tr key={record.id} className="break-inside-avoid">
+                      <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{record.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{(record as any).category?.replace('-', ' ')}</td>
+                      <td className="px-6 py-4 text-sm text-slate-500">
+                        {(record as any).lenderName && <div className="font-medium">{(record as any).lenderName}</div>}
+                        {(record as any).accountNumber && <div>Acct: {(record as any).accountNumber}</div>}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500 max-w-xs truncate print:whitespace-normal">{record.notes || '-'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-blue-600" />
+            Insurance Detail
+          </h3>
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden print:border-slate-300">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50 print:bg-slate-100">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Policy Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Company</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Coverage</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Contact</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {insurance.length === 0 ? (
+                  <tr><td colSpan={4} className="px-6 py-4 text-center text-slate-500">No policies recorded.</td></tr>
+                ) : (
+                  insurance.map((record) => (
+                    <tr key={record.id} className="break-inside-avoid">
+                      <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{record.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{(record as any).companyName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{(record as any).amount}</td>
+                      <td className="px-6 py-4 text-sm text-slate-500">
+                        {(record as any).representativeName && <div className="font-medium">{(record as any).representativeName}</div>}
+                        {(record as any).representativeContact && <div>{(record as any).representativeContact}</div>}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}

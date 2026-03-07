@@ -8,6 +8,7 @@ interface AuthContextType {
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signInAsGuest: () => void;
+  signInAsDemo: () => void;
   logout: () => Promise<void>;
 }
 
@@ -29,11 +30,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isGuest: false,
           });
         } else {
-          // Only clear user if we weren't in guest mode (or if we want to force logout)
-          // Actually, onAuthStateChanged fires on init. If no user, we might be guest or not logged in.
-          // We'll let the local state persist if it's guest, but if firebase explicitly says "no user" 
-          // and we thought we were a firebase user, we log out.
-          setUser((prev) => (prev?.isGuest ? prev : null));
+          // Only clear user if we weren't in guest or demo mode
+          setUser((prev) => ((prev?.isGuest || prev?.isDemo) ? prev : null));
         }
         setLoading(false);
       });
@@ -66,8 +64,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const signInAsDemo = () => {
+    setUser({
+      uid: 'demo-user',
+      email: 'demo@example.com',
+      displayName: 'Demo User',
+      photoURL: null,
+      isGuest: true, // It behaves like guest (no firebase save), but with pre-loaded data
+      isDemo: true,
+    });
+  };
+
   const logout = async () => {
-    if (user?.isGuest) {
+    if (user?.isGuest || user?.isDemo) {
       setUser(null);
     } else if (isFirebaseConfigured && auth) {
       await firebaseSignOut(auth);
@@ -75,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInAsGuest, logout }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInAsGuest, signInAsDemo, logout }}>
       {children}
     </AuthContext.Provider>
   );

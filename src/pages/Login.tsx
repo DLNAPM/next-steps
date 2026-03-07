@@ -1,9 +1,9 @@
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { ShieldCheck, User, Users } from 'lucide-react';
+import { ShieldCheck, User, Users, PlayCircle } from 'lucide-react';
 
 export default function Login() {
-  const { user, signInWithGoogle, signInAsGuest } = useAuth();
+  const { user, signInWithGoogle, signInAsGuest, signInAsDemo } = useAuth();
 
   if (user) {
     return <Navigate to="/" replace />;
@@ -57,20 +57,29 @@ export default function Login() {
             </div>
           </div>
 
-          <button
-            onClick={signInAsGuest}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors shadow-md"
-          >
-            <User className="h-5 w-5" />
-            Guest User
-          </button>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={signInAsDemo}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-700 rounded-xl font-medium hover:bg-indigo-100 transition-colors shadow-sm"
+            >
+              <PlayCircle className="h-5 w-5" />
+              Demo Account
+            </button>
+            <button
+              onClick={signInAsGuest}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors shadow-md"
+            >
+              <User className="h-5 w-5" />
+              Guest User
+            </button>
+          </div>
         </div>
 
         <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-800">
           <p className="flex gap-2">
             <Users className="h-5 w-5 flex-shrink-0" />
             <span>
-              <strong>Note:</strong> Guest user data is temporary and will be lost when you close the browser. Sign in with Google to save your records securely.
+              <strong>Note:</strong> Guest and Demo data is temporary. Sign in with Google to save your records securely.
             </span>
           </p>
         </div>

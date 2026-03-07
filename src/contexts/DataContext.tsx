@@ -15,6 +15,8 @@ import { useAuth } from './AuthContext';
 import { FinancialRecord } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
+import { SAMPLE_DATA } from '../data/sampleData';
+
 interface DataContextType {
   records: FinancialRecord[];
   loading: boolean;
@@ -37,11 +39,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    if (user.isDemo) {
+      setRecords(SAMPLE_DATA);
+      return;
+    }
+
     if (user.isGuest) {
       // Guest mode: Data is just in memory (already initialized as empty array or preserved in state)
       // If we wanted to persist guest data across refreshes we'd use localStorage here.
       // The prompt says: "Guest User's data won't be saved once user logs out or closes App"
       // So in-memory is correct.
+      // However, if we just switched from Demo to Guest (logout -> login), we want to clear.
+      // But since we mount/unmount or clear state on logout, it should be fine.
+      // If we are just initializing guest, we might want to ensure it's empty if it was previously something else?
+      // Actually, if we are guest, we just keep whatever is in 'records' state if we've been adding to it.
+      // But useEffect runs on 'user' change. If we just logged in as guest, 'records' might be empty from the !user check above?
+      // Wait, if !user, we set records to []. Then we login as guest. records is []. Correct.
       return;
     }
 

@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import CategoryList from './pages/CategoryList';
 import ShareAccess from './pages/ShareAccess';
+import Reports from './pages/Reports';
 
 export default function App() {
   return (
@@ -43,6 +44,7 @@ export default function App() {
                   description="Keep track of policies and beneficiary information." 
                 />
               } />
+              <Route path="reports" element={<Reports />} />
               <Route path="share" element={<ShareAccess />} />
             </Route>
           </Routes>
