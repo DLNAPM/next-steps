@@ -1,16 +1,29 @@
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { ShieldCheck, User, Users, PlayCircle } from 'lucide-react';
+import { ShieldCheck, User, Users, PlayCircle, HelpCircle } from 'lucide-react';
+import { useState } from 'react';
+import HelpModal from '../components/HelpModal';
 
 export default function Login() {
   const { user, signInWithGoogle, signInAsGuest, signInAsDemo } = useAuth();
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   if (user) {
     return <Navigate to="/" replace />;
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 relative">
+      <button
+        onClick={() => setIsHelpOpen(true)}
+        className="absolute top-4 right-4 p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-full transition-all shadow-sm hover:shadow-md"
+        title="About this app"
+      >
+        <HelpCircle className="w-6 h-6" />
+      </button>
+
+      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 space-y-8">
         <div className="text-center">
           <div className="mx-auto h-16 w-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4">

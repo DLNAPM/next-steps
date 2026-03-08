@@ -1,14 +1,16 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, LayoutDashboard, Landmark, CreditCard, Shield, Menu, X, Users, FileText, Database } from 'lucide-react';
+import { LogOut, LayoutDashboard, Landmark, CreditCard, Shield, Menu, X, Users, FileText, Database, HelpCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
+import HelpModal from './HelpModal';
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isHelpOpen, setIsHelpOpen] = React.useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -27,11 +29,22 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      
       {/* Sidebar (Desktop) */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 shadow-sm">
-        <div className="p-6 border-b border-slate-100">
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Next Steps</h1>
-          <p className="text-xs text-slate-500 mt-1">Family Financial Records</p>
+        <div className="p-6 border-b border-slate-100 flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Next Steps</h1>
+            <p className="text-xs text-slate-500 mt-1">Family Financial Records</p>
+          </div>
+          <button 
+            onClick={() => setIsHelpOpen(true)}
+            className="text-slate-400 hover:text-indigo-600 transition-colors"
+            title="Help & Information"
+          >
+            <HelpCircle className="w-5 h-5" />
+          </button>
         </div>
         
         <nav className="flex-1 p-4 space-y-1">
@@ -83,9 +96,17 @@ export default function Layout() {
       {/* Mobile Header */}
       <div className="md:hidden bg-white border-b border-slate-200 p-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-slate-800">Next Steps</h1>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-600">
-          {isMobileMenuOpen ? <X /> : <Menu />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setIsHelpOpen(true)}
+            className="p-2 text-slate-400 hover:text-indigo-600"
+          >
+            <HelpCircle className="w-6 h-6" />
+          </button>
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-600">
+            {isMobileMenuOpen ? <X /> : <Menu />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu */}
