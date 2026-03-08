@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { LogOut, LayoutDashboard, Landmark, CreditCard, Shield, Menu, X, Users, FileText, Database, HelpCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import HelpModal from './HelpModal';
+import AppIcon from './AppIcon';
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -34,13 +35,16 @@ export default function Layout() {
       {/* Sidebar (Desktop) */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 shadow-sm">
         <div className="p-6 border-b border-slate-100 flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Next Steps</h1>
-            <p className="text-xs text-slate-500 mt-1">Family Financial Records</p>
+          <div className="flex items-center gap-3">
+            <AppIcon size="sm" className="rounded-lg" />
+            <div>
+              <h1 className="text-xl font-bold text-slate-800 tracking-tight leading-tight">Next Steps</h1>
+              <p className="text-[10px] text-slate-500 font-medium">Family Financial Records</p>
+            </div>
           </div>
           <button 
             onClick={() => setIsHelpOpen(true)}
-            className="text-slate-400 hover:text-indigo-600 transition-colors"
+            className="text-slate-400 hover:text-indigo-600 transition-colors -mt-1 -mr-2 p-2"
             title="Help & Information"
           >
             <HelpCircle className="w-5 h-5" />
@@ -95,7 +99,10 @@ export default function Layout() {
 
       {/* Mobile Header */}
       <div className="md:hidden bg-white border-b border-slate-200 p-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-800">Next Steps</h1>
+        <div className="flex items-center gap-3">
+          <AppIcon size="sm" className="rounded-lg" />
+          <h1 className="text-xl font-bold text-slate-800">Next Steps</h1>
+        </div>
         <div className="flex items-center gap-2">
           <button 
             onClick={() => setIsHelpOpen(true)}

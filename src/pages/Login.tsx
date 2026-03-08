@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { ShieldCheck, User, Users, PlayCircle, HelpCircle } from 'lucide-react';
 import { useState } from 'react';
 import HelpModal from '../components/HelpModal';
+import AppIcon from '../components/AppIcon';
 
 export default function Login() {
   const { user, signInWithGoogle, signInAsGuest, signInAsDemo } = useAuth();
@@ -26,8 +27,8 @@ export default function Login() {
 
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 space-y-8">
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
-            <ShieldCheck className="h-8 w-8 text-indigo-600" />
+          <div className="mx-auto flex items-center justify-center mb-4">
+            <AppIcon size="xl" />
           </div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Next Steps</h1>
           <p className="mt-2 text-slate-600">
