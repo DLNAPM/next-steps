@@ -1,38 +1,84 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useForm } from 'react-hook-form';
-import { UserPlus, Trash2, Shield, Mail, Check } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Mail, Check, AlertCircle } from 'lucide-react';
+import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 interface SharedUser {
   email: string;
   permission: 'read' | 'edit';
   status: 'pending' | 'accepted';
+  ownerId: string;
 }
 
 export default function ShareAccess() {
   const { user } = useAuth();
-  const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([
-    // Mock data for demonstration if authenticated, or empty
-  ]);
+  const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { register, handleSubmit, reset } = useForm<{ email: string; permission: 'read' | 'edit' }>();
 
-  const onSubmit = (data: { email: string; permission: 'read' | 'edit' }) => {
-    setSharedUsers([...sharedUsers, { ...data, status: 'pending' }]);
-    reset();
-    alert(`Invitation sent to ${data.email}`);
+  // Fetch shared users
+  useEffect(() => {
+    if (!user || user.isGuest || user.isDemo || !db) return;
+
+    const q = query(collection(db, 'shared_access'), where('ownerId', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const users: SharedUser[] = [];
+      snapshot.forEach((doc) => {
+        users.push(doc.data() as SharedUser);
+      });
+      setSharedUsers(users);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const onSubmit = async (data: { email: string; permission: 'read' | 'edit' }) => {
+    if (!user || !db) return;
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Create a composite ID to ensure uniqueness per user-email pair
+      const docId = `${user.uid}_${data.email}`;
+      await setDoc(doc(db, 'shared_access', docId), {
+        ownerId: user.uid,
+        sharedWithEmail: data.email,
+        permission: data.permission,
+        status: 'accepted', // Auto-accept for now
+        createdAt: serverTimestamp(),
+      });
+      reset();
+    } catch (err) {
+      console.error("Error sharing access:", err);
+      setError("Failed to share access. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const removeUser = (email: string) => {
-    setSharedUsers(sharedUsers.filter(u => u.email !== email));
+  const removeUser = async (email: string) => {
+    if (!user || !db) return;
+    if (!confirm(`Are you sure you want to remove access for ${email}?`)) return;
+
+    try {
+      const docId = `${user.uid}_${email}`;
+      await deleteDoc(doc(db, 'shared_access', docId));
+    } catch (err) {
+      console.error("Error removing user:", err);
+      alert("Failed to remove user.");
+    }
   };
 
-  if (user?.isGuest) {
+  if (user?.isGuest || user?.isDemo) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
           <UserPlus className="w-8 h-8 text-slate-400" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-900">Sharing is disabled in Guest Mode</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Sharing is disabled in Demo/Guest Mode</h2>
         <p className="text-slate-500 max-w-md mt-2">
           To share your financial records securely with family members, please sign in with your Google Account.
         </p>
@@ -45,7 +91,7 @@ export default function ShareAccess() {
       <div>
         <h2 className="text-3xl font-bold text-slate-900">Share Access</h2>
         <p className="text-slate-500 mt-1">
-          Grant loved ones access to these records. They will need a Google Account to sign in.
+          Grant loved ones access to these records. They will need to sign in with the email address you invite.
         </p>
       </div>
 
@@ -78,12 +124,19 @@ export default function ShareAccess() {
           </div>
           <button
             type="submit"
-            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            disabled={loading}
+            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
           >
             <UserPlus className="w-4 h-4 mr-2" />
-            Invite
+            {loading ? 'Sending...' : 'Invite'}
           </button>
         </form>
+        {error && (
+          <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-lg flex items-center gap-2 text-sm">
+            <AlertCircle className="w-4 h-4" />
+            {error}
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -109,8 +162,8 @@ export default function ShareAccess() {
                         {u.permission === 'edit' ? 'Can Edit' : 'Read Only'}
                       </span>
                       <span>•</span>
-                      <span className={u.status === 'accepted' ? 'text-emerald-600' : 'text-slate-400'}>
-                        {u.status === 'accepted' ? 'Accepted' : 'Pending Invitation'}
+                      <span className="text-emerald-600">
+                        Has Access
                       </span>
                     </div>
                   </div>

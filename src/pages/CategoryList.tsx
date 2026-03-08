@@ -100,9 +100,14 @@ export default function CategoryList({ type, title, description }: CategoryListP
 
 const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDelete: () => void }> = ({ record, onEdit, onDelete }) => {
   const [expanded, setExpanded] = useState(false);
+  const { isSharedRecord } = useData();
+  const isShared = isSharedRecord(record);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden transition-all hover:shadow-md">
+    <div className={cn(
+      "bg-white rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md",
+      isShared ? "border-amber-200 bg-amber-50/30" : "border-slate-200"
+    )}>
       <div className="p-4 flex items-center justify-between cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-center gap-4">
           <div className={cn(
@@ -114,7 +119,10 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
             {record.name[0].toUpperCase()}
           </div>
           <div>
-            <h3 className="font-bold text-slate-900">{record.name}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-slate-900">{record.name}</h3>
+              {isShared && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Shared</span>}
+            </div>
             <p className="text-sm text-slate-500">
               {/* Show a key detail based on type */}
               {(record as any).accountNumber ? `Acct: ••••${(record as any).accountNumber.slice(-4)}` : 'No Account #'}
