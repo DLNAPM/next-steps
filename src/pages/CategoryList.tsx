@@ -119,6 +119,7 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
               {/* Show a key detail based on type */}
               {(record as any).accountNumber ? `Acct: ••••${(record as any).accountNumber.slice(-4)}` : 'No Account #'}
               {record.type === 'insurance' && (record as InsuranceRecord).amount && ` • ${(record as InsuranceRecord).amount}`}
+              {(record as any).currentBalance && ` • ${(record as any).currentBalance}`}
             </p>
           </div>
         </div>
@@ -143,6 +144,20 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
               <div className="col-span-full">
                 <span className="font-semibold text-slate-700 block mb-1">Notes</span>
                 <p className="text-slate-600 bg-white p-3 rounded-lg border border-slate-200">{record.notes}</p>
+              </div>
+            )}
+            
+            {(record as any).currentBalance && (
+              <div>
+                <span className="font-semibold text-slate-700 block mb-1">Current Balance</span>
+                <span className="text-slate-600">{(record as any).currentBalance}</span>
+              </div>
+            )}
+
+            {(record as any).startBalance && (
+              <div>
+                <span className="font-semibold text-slate-700 block mb-1">Start Balance</span>
+                <span className="text-slate-600">{(record as any).startBalance}</span>
               </div>
             )}
             
@@ -208,6 +223,8 @@ type FormData = {
   category?: string;
   accountNumber?: string;
   url?: string;
+  currentBalance?: string;
+  startBalance?: string;
   // Asset specific
   institutionName?: string;
   deedUrl?: string;
@@ -234,6 +251,8 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
       notes: '',
       accountNumber: '',
       url: '',
+      currentBalance: '',
+      startBalance: '',
       category: type === 'asset' ? 'bank' : type === 'debt' ? 'mortgage' : undefined,
     }
   });
@@ -295,6 +314,22 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
                 <input {...register('url')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="https://..." />
               </div>
             </div>
+
+            {/* Balance Fields */}
+            {(type === 'asset' || type === 'debt') && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Current Balance</label>
+                  <input {...register('currentBalance')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="$0.00" />
+                </div>
+                {type === 'debt' && (category === 'mortgage' || category === 'loan' || category === 'other') && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Start Balance</label>
+                    <input {...register('startBalance')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="$0.00" />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Type Specific Fields */}
