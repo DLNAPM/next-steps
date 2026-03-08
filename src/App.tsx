@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import CategoryList from './pages/CategoryList';
 import ShareAccess from './pages/ShareAccess';
 import Reports from './pages/Reports';
+import DataManagement from './pages/DataManagement';
 
 export default function App() {
   return (
@@ -45,6 +46,7 @@ export default function App() {
                 />
               } />
               <Route path="reports" element={<Reports />} />
+              <Route path="data" element={<DataManagement />} />
               <Route path="share" element={<ShareAccess />} />
             </Route>
           </Routes>
