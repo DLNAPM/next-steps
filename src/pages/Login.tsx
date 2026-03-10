@@ -4,6 +4,7 @@ import { ShieldCheck, User, Users, PlayCircle, HelpCircle, FileText, Lock } from
 import { useState } from 'react';
 import HelpModal from '../components/HelpModal';
 import AppIcon from '../components/AppIcon';
+import heroImage from '../Copilot_NextSteps_EPS.jpg';
 
 export default function Login() {
   const { user, signInWithGoogle, signInAsGuest, signInAsDemo } = useAuth();
@@ -71,7 +72,7 @@ export default function Login() {
           <div className="relative flex justify-center lg:justify-end">
             <div className="relative w-full max-w-lg aspect-square rounded-3xl overflow-hidden shadow-2xl border border-slate-100 bg-white flex items-center justify-center p-6">
                <img 
-                 src="/Copilot_NextSteps_EPS.jpg" 
+                 src={heroImage} 
                  alt="Next Steps Estate Planning Solutions" 
                  className="w-full h-full object-contain rounded-xl"
                  referrerPolicy="no-referrer"
