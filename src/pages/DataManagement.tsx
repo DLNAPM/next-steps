@@ -7,10 +7,14 @@ import { saveAs } from 'file-saver';
 import { FinancialRecord } from '../types';
 
 export default function DataManagement() {
-  const { records, addRecord } = useData();
+  const { records, addRecord, updateRecord } = useData();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [duplicateResolution, setDuplicateResolution] = useState<{
+    duplicates: { existing: FinancialRecord, new: any }[],
+    newRecords: any[]
+  } | null>(null);
 
   const handleDownloadJson = () => {
     const dataStr = JSON.stringify(records, null, 2);
@@ -54,7 +58,9 @@ export default function DataManagement() {
           throw new Error('Invalid data format. Expected an array of records.');
         }
 
-        let successCount = 0;
+        const duplicates: { existing: FinancialRecord, new: any }[] = [];
+        const newRecords: any[] = [];
+
         for (const item of data) {
           // Basic validation
           if (!item.name || !item.type) {
@@ -67,12 +73,25 @@ export default function DataManagement() {
           // We strip ID/userId/timestamps to let addRecord handle them as new entries
           const { id, userId, createdAt, updatedAt, ...cleanRecord } = item;
           
-          await addRecord(cleanRecord);
-          successCount++;
+          const duplicate = records.find(r => r.name.toLowerCase() === cleanRecord.name.toLowerCase() && r.type === cleanRecord.type);
+          if (duplicate) {
+            duplicates.push({ existing: duplicate, new: cleanRecord });
+          } else {
+            newRecords.push(cleanRecord);
+          }
         }
 
-        setImportStatus({ type: 'success', message: `Successfully imported ${successCount} records.` });
-        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (duplicates.length > 0) {
+          setDuplicateResolution({ duplicates, newRecords });
+        } else {
+          let successCount = 0;
+          for (const rec of newRecords) {
+            await addRecord(rec);
+            successCount++;
+          }
+          setImportStatus({ type: 'success', message: `Successfully imported ${successCount} records.` });
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
 
       } catch (error) {
         console.error('Import error:', error);
@@ -240,6 +259,62 @@ export default function DataManagement() {
           * Additional specific fields like <code>institutionName</code>, <code>lenderName</code>, <code>companyName</code>, <code>amount</code>, etc. are also supported.
         </p>
       </div>
+
+      {duplicateResolution && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Duplicate Records Found</h3>
+            <p className="text-slate-600 mb-6">
+              We found {duplicateResolution.duplicates.length} record(s) with the same name as existing ones. Would you like to update the existing records with the imported data, or keep your current records?
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={async () => {
+                  let successCount = 0;
+                  for (const rec of duplicateResolution.newRecords) {
+                    await addRecord(rec);
+                    successCount++;
+                  }
+                  for (const dup of duplicateResolution.duplicates) {
+                    await updateRecord(dup.existing.id, dup.new);
+                    successCount++;
+                  }
+                  setImportStatus({ type: 'success', message: `Successfully imported and updated ${successCount} records.` });
+                  setDuplicateResolution(null);
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }}
+                className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700"
+              >
+                Update Existing Records
+              </button>
+              <button
+                onClick={async () => {
+                  let successCount = 0;
+                  for (const rec of duplicateResolution.newRecords) {
+                    await addRecord(rec);
+                    successCount++;
+                  }
+                  setImportStatus({ type: 'success', message: `Successfully imported ${successCount} new records. Skipped duplicates.` });
+                  setDuplicateResolution(null);
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }}
+                className="w-full py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl font-medium hover:bg-slate-50"
+              >
+                Keep Current Records (Skip Duplicates)
+              </button>
+              <button
+                onClick={() => {
+                  setDuplicateResolution(null);
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }}
+                className="w-full py-2.5 text-slate-500 font-medium hover:text-slate-700 mt-2"
+              >
+                Cancel Import
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -17,7 +17,12 @@ export default function CategoryList({ type, title, description }: CategoryListP
   const { records, addRecord, updateRecord, deleteRecord } = useData();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<FinancialRecord | null>(null);
-  
+  const [duplicateResolution, setDuplicateResolution] = useState<{
+    existing: FinancialRecord,
+    newData: any,
+    editingRecordId?: string
+  } | null>(null);
+
   const filteredRecords = records.filter(r => r.type === type);
 
   const openAddModal = () => {
@@ -86,13 +91,59 @@ export default function CategoryList({ type, title, description }: CategoryListP
           onClose={() => setIsModalOpen(false)}
           onSubmit={async (data) => {
             if (editingRecord) {
-              await updateRecord(editingRecord.id, data);
+              const duplicate = records.find(r => r.name.toLowerCase() === data.name.toLowerCase() && r.type === type && r.id !== editingRecord.id);
+              if (duplicate) {
+                setDuplicateResolution({ existing: duplicate, newData: data, editingRecordId: editingRecord.id });
+                setIsModalOpen(false);
+              } else {
+                await updateRecord(editingRecord.id, data);
+                setIsModalOpen(false);
+              }
             } else {
-              await addRecord({ ...data, type } as any);
+              const duplicate = records.find(r => r.name.toLowerCase() === data.name.toLowerCase() && r.type === type);
+              if (duplicate) {
+                setDuplicateResolution({ existing: duplicate, newData: data });
+                setIsModalOpen(false);
+              } else {
+                await addRecord({ ...data, type } as any);
+                setIsModalOpen(false);
+              }
             }
-            setIsModalOpen(false);
           }}
         />
+      )}
+
+      {duplicateResolution && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Duplicate Record Found</h3>
+            <p className="text-slate-600 mb-6">
+              A record named "{duplicateResolution.newData.name}" already exists. Would you like to update the existing record with this new information, or keep your current record and discard these changes?
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={async () => {
+                  await updateRecord(duplicateResolution.existing.id, duplicateResolution.newData);
+                  if (duplicateResolution.editingRecordId) {
+                    await deleteRecord(duplicateResolution.editingRecordId);
+                  }
+                  setDuplicateResolution(null);
+                }}
+                className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700"
+              >
+                Update Existing Record
+              </button>
+              <button
+                onClick={() => {
+                  setDuplicateResolution(null);
+                }}
+                className="w-full py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl font-medium hover:bg-slate-50"
+              >
+                Keep Current Record (Discard New)
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
