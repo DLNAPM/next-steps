@@ -19,6 +19,8 @@ export interface AssetRecord extends BaseRecord {
   url?: string;
   institutionName?: string; // For banks, investment firms
   currentBalance?: string; // New field
+  purchasePrice?: string; // Real estate
+  currentValue?: string; // Real estate
   // Specific fields
   deedUrl?: string; // Real estate
   countyClerkUrl?: string; // Real estate

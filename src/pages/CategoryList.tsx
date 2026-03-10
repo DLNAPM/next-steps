@@ -128,6 +128,7 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
               {(record as any).accountNumber ? `Acct: ••••${(record as any).accountNumber.slice(-4)}` : 'No Account #'}
               {record.type === 'insurance' && (record as InsuranceRecord).amount && ` • ${(record as InsuranceRecord).amount}`}
               {(record as any).currentBalance && ` • ${(record as any).currentBalance}`}
+              {record.type === 'asset' && (record as AssetRecord).category === 'real-estate' && (record as AssetRecord).currentValue && ` • ${(record as AssetRecord).currentValue}`}
             </p>
           </div>
         </div>
@@ -155,12 +156,19 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
               </div>
             )}
             
-            {(record as any).currentBalance && (
-              <div>
-                <span className="font-semibold text-slate-700 block mb-1">Current Balance</span>
-                <span className="text-slate-600">{(record as any).currentBalance}</span>
-              </div>
-            )}
+              {(record as any).currentBalance && record.type !== 'asset' && (record as any).category !== 'real-estate' && (
+                <div>
+                  <span className="font-semibold text-slate-700 block mb-1">Current Balance</span>
+                  <span className="text-slate-600">{(record as any).currentBalance}</span>
+                </div>
+              )}
+
+              {record.type === 'asset' && (record as any).category !== 'real-estate' && (record as any).currentBalance && (
+                <div>
+                  <span className="font-semibold text-slate-700 block mb-1">Current Balance</span>
+                  <span className="text-slate-600">{(record as any).currentBalance}</span>
+                </div>
+              )}
 
             {(record as any).startBalance && (
               <div>
@@ -181,6 +189,22 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
             {/* Type Specific Fields */}
             {record.type === 'asset' && (
               <>
+                {(record as AssetRecord).category === 'real-estate' && (
+                  <>
+                    {(record as AssetRecord).purchasePrice && (
+                      <div>
+                        <span className="font-semibold text-slate-700 block mb-1">Purchase Price</span>
+                        <span className="text-slate-600">{(record as AssetRecord).purchasePrice}</span>
+                      </div>
+                    )}
+                    {(record as AssetRecord).currentValue && (
+                      <div>
+                        <span className="font-semibold text-slate-700 block mb-1">Current Value</span>
+                        <span className="text-slate-600">{(record as AssetRecord).currentValue}</span>
+                      </div>
+                    )}
+                  </>
+                )}
                 {(record as AssetRecord).institutionName && (
                   <div>
                     <span className="font-semibold text-slate-700 block mb-1">Institution</span>
@@ -235,6 +259,8 @@ type FormData = {
   startBalance?: string;
   // Asset specific
   institutionName?: string;
+  purchasePrice?: string;
+  currentValue?: string;
   deedUrl?: string;
   countyClerkUrl?: string;
   // Debt specific
@@ -261,6 +287,8 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
       url: '',
       currentBalance: '',
       startBalance: '',
+      purchasePrice: '',
+      currentValue: '',
       category: type === 'asset' ? 'bank' : type === 'debt' ? 'mortgage' : undefined,
     }
   });
@@ -326,10 +354,12 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
             {/* Balance Fields */}
             {(type === 'asset' || type === 'debt') && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Current Balance</label>
-                  <input {...register('currentBalance')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="$0.00" />
-                </div>
+                {!(type === 'asset' && category === 'real-estate') && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Current Balance</label>
+                    <input {...register('currentBalance')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="$0.00" />
+                  </div>
+                )}
                 {type === 'debt' && (category === 'mortgage' || category === 'loan' || category === 'other') && (
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Start Balance</label>
@@ -345,16 +375,28 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
             <div className="space-y-4 pt-4 border-t border-slate-100">
                <h4 className="font-medium text-slate-900">Asset Details</h4>
                {category === 'real-estate' ? (
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-1">Deed URL</label>
-                     <input {...register('deedUrl')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                 <>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                     <div>
+                       <label className="block text-sm font-medium text-slate-700 mb-1">Purchase Price</label>
+                       <input {...register('purchasePrice')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="$0.00" />
+                     </div>
+                     <div>
+                       <label className="block text-sm font-medium text-slate-700 mb-1">Current Value</label>
+                       <input {...register('currentValue')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="$0.00" />
+                     </div>
                    </div>
-                   <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-1">County Clerk URL</label>
-                     <input {...register('countyClerkUrl')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div>
+                       <label className="block text-sm font-medium text-slate-700 mb-1">Deed URL</label>
+                       <input {...register('deedUrl')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                     </div>
+                     <div>
+                       <label className="block text-sm font-medium text-slate-700 mb-1">County Clerk URL</label>
+                       <input {...register('countyClerkUrl')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                     </div>
                    </div>
-                 </div>
+                 </>
                ) : (
                  <div>
                    <label className="block text-sm font-medium text-slate-700 mb-1">Institution Name</label>

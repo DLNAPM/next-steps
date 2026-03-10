@@ -204,6 +204,16 @@ export default function DataManagement() {
                 <td className="px-4 py-2">Current value or amount owed (e.g. "$5,000")</td>
               </tr>
               <tr>
+                <td className="px-4 py-2 font-mono text-indigo-600">purchasePrice</td>
+                <td className="px-4 py-2">No</td>
+                <td className="px-4 py-2">Purchase price (Real Estate only)</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-2 font-mono text-indigo-600">currentValue</td>
+                <td className="px-4 py-2">No</td>
+                <td className="px-4 py-2">Current value (Real Estate only)</td>
+              </tr>
+              <tr>
                 <td className="px-4 py-2 font-mono text-indigo-600">startBalance</td>
                 <td className="px-4 py-2">No</td>
                 <td className="px-4 py-2">Original loan amount (Debts only)</td>

@@ -112,7 +112,9 @@ export default function Reports() {
                     <tr key={record.id} className="break-inside-avoid">
                       <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{record.name}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{(record as any).category?.replace('-', ' ')}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{(record as any).currentBalance || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                        {(record as any).category === 'real-estate' ? (record as any).currentValue || '-' : (record as any).currentBalance || '-'}
+                      </td>
                       <td className="px-6 py-4 text-sm text-slate-500">
                         {(record as any).institutionName && <div className="font-medium">{(record as any).institutionName}</div>}
                         {(record as any).accountNumber && <div>Acct: {(record as any).accountNumber}</div>}
