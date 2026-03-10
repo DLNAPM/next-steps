@@ -75,10 +75,6 @@ export default function Login() {
                  alt="Next Steps Estate Planning Solutions" 
                  className="w-full h-full object-cover"
                  referrerPolicy="no-referrer"
-                 onError={(e) => {
-                   // Fallback if image is not uploaded yet
-                   (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&q=80&w=1000";
-                 }}
                />
             </div>
           </div>
