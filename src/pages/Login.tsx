@@ -69,11 +69,11 @@ export default function Login() {
           </div>
           
           <div className="relative flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-lg aspect-square rounded-3xl overflow-hidden shadow-2xl border border-slate-100 bg-slate-50">
+            <div className="relative w-full max-w-lg aspect-square rounded-3xl overflow-hidden shadow-2xl border border-slate-100 bg-white flex items-center justify-center p-6">
                <img 
                  src="/Copilot_NextSteps(EPS).jpg" 
                  alt="Next Steps Estate Planning Solutions" 
-                 className="w-full h-full object-cover"
+                 className="w-full h-full object-contain rounded-xl"
                  referrerPolicy="no-referrer"
                />
             </div>
