@@ -90,22 +90,27 @@ export default function CategoryList({ type, title, description }: CategoryListP
           initialData={editingRecord}
           onClose={() => setIsModalOpen(false)}
           onSubmit={async (data) => {
+            // Remove undefined fields to prevent Firebase errors
+            const cleanData = Object.fromEntries(
+              Object.entries(data).filter(([_, v]) => v !== undefined)
+            );
+
             if (editingRecord) {
-              const duplicate = records.find(r => r.name.toLowerCase() === data.name.toLowerCase() && r.type === type && r.id !== editingRecord.id);
+              const duplicate = records.find(r => r.name.toLowerCase() === (cleanData as any).name.toLowerCase() && r.type === type && r.id !== editingRecord.id);
               if (duplicate) {
-                setDuplicateResolution({ existing: duplicate, newData: data, editingRecordId: editingRecord.id });
+                setDuplicateResolution({ existing: duplicate, newData: cleanData, editingRecordId: editingRecord.id });
                 setIsModalOpen(false);
               } else {
-                await updateRecord(editingRecord.id, data);
+                await updateRecord(editingRecord.id, cleanData);
                 setIsModalOpen(false);
               }
             } else {
-              const duplicate = records.find(r => r.name.toLowerCase() === data.name.toLowerCase() && r.type === type);
+              const duplicate = records.find(r => r.name.toLowerCase() === (cleanData as any).name.toLowerCase() && r.type === type);
               if (duplicate) {
-                setDuplicateResolution({ existing: duplicate, newData: data });
+                setDuplicateResolution({ existing: duplicate, newData: cleanData });
                 setIsModalOpen(false);
               } else {
-                await addRecord({ ...data, type } as any);
+                await addRecord({ ...cleanData, type } as any);
                 setIsModalOpen(false);
               }
             }

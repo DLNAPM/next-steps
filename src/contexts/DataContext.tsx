@@ -163,8 +163,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const addRecord = async (recordData: Omit<FinancialRecord, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     if (!user) return;
 
+    // Remove undefined fields to prevent Firebase errors
+    const cleanRecordData = Object.fromEntries(
+      Object.entries(recordData).filter(([_, v]) => v !== undefined)
+    );
+
     const newRecord = {
-      ...recordData,
+      ...cleanRecordData,
       userId: user.uid,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -185,12 +190,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const updateRecord = async (id: string, recordData: Partial<FinancialRecord>) => {
     if (!user) return;
 
+    // Remove undefined fields to prevent Firebase errors
+    const cleanRecordData = Object.fromEntries(
+      Object.entries(recordData).filter(([_, v]) => v !== undefined)
+    );
+
     if (user.isGuest || user.isDemo) {
-      setRecords(prev => prev.map(r => r.id === id ? { ...r, ...recordData, updatedAt: Date.now() } : r));
+      setRecords(prev => prev.map(r => r.id === id ? { ...r, ...cleanRecordData, updatedAt: Date.now() } : r));
     } else if (db) {
       const recordRef = doc(db, 'records', id);
       await updateDoc(recordRef, {
-        ...recordData,
+        ...cleanRecordData,
         updatedAt: serverTimestamp(),
       });
     }

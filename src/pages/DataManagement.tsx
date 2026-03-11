@@ -71,9 +71,14 @@ export default function DataManagement() {
           // Sanitize and map fields if necessary
           // We assume the import matches our internal structure or close to it
           // We strip ID/userId/timestamps to let addRecord handle them as new entries
-          const { id, userId, createdAt, updatedAt, ...cleanRecord } = item;
+          const { id, userId, createdAt, updatedAt, ...rest } = item;
           
-          const duplicate = records.find(r => r.name.toLowerCase() === cleanRecord.name.toLowerCase() && r.type === cleanRecord.type);
+          // Remove undefined fields to prevent Firebase errors
+          const cleanRecord = Object.fromEntries(
+            Object.entries(rest).filter(([_, v]) => v !== undefined)
+          );
+          
+          const duplicate = records.find(r => r.name.toLowerCase() === (cleanRecord as any).name.toLowerCase() && r.type === (cleanRecord as any).type);
           if (duplicate) {
             duplicates.push({ existing: duplicate, new: cleanRecord });
           } else {
