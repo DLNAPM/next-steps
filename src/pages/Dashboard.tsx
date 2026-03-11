@@ -60,7 +60,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="space-y-4">
-              {records.slice(0, 5).map(record => (
+              {[...records].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5).map(record => (
                 <div key={record.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
                   <div>
                     <p className="font-medium text-slate-900">{record.name}</p>

@@ -49,53 +49,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (user.isGuest) {
       return;
     }
-
-    if (db) {
-      setLoading(true);
-      
-      // 1. Fetch my records
-      const myRecordsQuery = query(collection(db, 'records'), where('userId', '==', user.uid));
-      
-      // 2. Fetch shared records
-      // First find who shared with me
-      const sharedWithMeQuery = query(collection(db, 'shared_access'), where('sharedWithEmail', '==', user.email));
-      
-      const unsubscribeMyRecords = onSnapshot(myRecordsQuery, (mySnapshot) => {
-        const myData = mySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FinancialRecord));
-        
-        // We need to manage shared records separately or merge them
-        // Since we can't do a single query for "mine OR shared", we'll fetch shared separately
-        // and merge in state.
-        // However, onSnapshot inside onSnapshot is messy.
-        // Let's use a simpler approach: 
-        // We'll listen to my records.
-        // We'll also listen to shared_access to know which owners to listen to.
-        
-        // For simplicity in this demo, let's just fetch shared records once or set up listeners dynamically.
-        // A robust solution would be complex. Let's try to set up listeners for all relevant owners.
-        
-        // Let's just store myData in a ref or separate state? 
-        // Actually, let's just restart the whole fetch process if shared_access changes.
-        
-        // But we are inside the effect. 
-        // Let's do this:
-        // We will maintain a list of unsubscribe functions.
-        
-      });
-
-      // REFACTOR: Let's separate the logic.
-      // We need to listen to:
-      // A. My records
-      // B. The 'shared_access' collection to see who shared with me.
-      // C. For each person who shared with me, listen to their records.
-      
-      // This is getting complicated for a single useEffect.
-      // Let's simplify: Just fetch my records for now in the main listener, 
-      // and do a separate useEffect for shared records.
-      
-      return () => unsubscribeMyRecords();
-    }
   }, [user]);
+
+  const mapDocToRecord = (doc: any): FinancialRecord => {
+    const data = doc.data();
+    
+    const parseTimestamp = (ts: any) => {
+      if (!ts) return Date.now();
+      if (typeof ts === 'number') return ts;
+      if (typeof ts.toMillis === 'function') return ts.toMillis();
+      if (ts.seconds) return ts.seconds * 1000;
+      if (typeof ts === 'string') {
+        const num = Number(ts);
+        if (!isNaN(num)) return num;
+        const parsed = new Date(ts).getTime();
+        return isNaN(parsed) ? Date.now() : parsed;
+      }
+      return Date.now();
+    };
+
+    return {
+      ...data,
+      id: doc.id,
+      createdAt: parseTimestamp(data.createdAt),
+      updatedAt: parseTimestamp(data.updatedAt),
+    } as FinancialRecord;
+  };
 
   // Effect for handling BOTH my records and shared records properly
   useEffect(() => {
@@ -115,7 +94,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     // 1. Listen to MY records
     const qMy = query(collection(db, 'records'), where('userId', '==', user.uid));
     const unsubMy = onSnapshot(qMy, (snap) => {
-      myRecords = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as FinancialRecord));
+      myRecords = snap.docs.map(mapDocToRecord);
       updateAllRecords();
     });
     unsubscribes.push(unsubMy);
@@ -127,25 +106,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // For each shared access doc, we get an ownerId
         const ownerIds = snap.docs.map(doc => doc.data().ownerId as string);
         
-        // We need to listen to records for these owners
-        // NOTE: In a real app, we should be careful about creating too many listeners.
-        // We also need to cleanup old listeners if ownerIds change. 
-        // For this implementation, we'll just add new listeners. Cleanup is hard without a ref.
-        // A better way: Just fetch them once? No, we want real time.
-        
-        // Let's just iterate and add listeners if we haven't already?
-        // Actually, simpler: 
-        // For each ownerId, set up a listener.
-        
-        // Clear previous shared records to avoid duplicates if this snapshot fires again?
-        // This is tricky. Let's just support 1 level of sharing update for now.
-        
         ownerIds.forEach(ownerId => {
-           // Check if we already have a listener? (Hard to track here)
-           // Let's just create a listener.
            const qOwner = query(collection(db, 'records'), where('userId', '==', ownerId));
            const unsubOwner = onSnapshot(qOwner, (ownerSnap) => {
-             const ownerRecords = ownerSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as FinancialRecord));
+             const ownerRecords = ownerSnap.docs.map(mapDocToRecord);
              sharedRecordsMap[ownerId] = ownerRecords;
              updateAllRecords();
            });
