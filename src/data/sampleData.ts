@@ -90,5 +90,31 @@ export const SAMPLE_DATA: FinancialRecord[] = [
     notes: '20-year term policy expiring in 2035.',
     createdAt: Date.now(),
     updatedAt: Date.now(),
+  },
+
+  // TRUSTS
+  {
+    id: 'demo-trust-1',
+    userId: 'demo-user',
+    type: 'trust',
+    name: 'Smith Family Living Trust',
+    trustType: 'revocable',
+    trusteeDetails: 'John Smith (Primary Trustee)\nJane Doe (Successor Trustee)\nPhone: 555-0199',
+    url: 'https://www.fidelity.com/trusts',
+    notes: 'Holds primary residence and brokerage accounts.',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
+  {
+    id: 'demo-trust-2',
+    userId: 'demo-user',
+    type: 'trust',
+    name: 'Smith Children Educational Trust',
+    trustType: 'irrevocable',
+    trusteeDetails: 'First National Bank Trust Department\nContact: Sarah Jenkins\nEmail: s.jenkins@fnb.com',
+    url: 'https://www.fnb.com/trust-login',
+    notes: 'Set up for the grandchildren\'s college education.',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
   }
 ] as FinancialRecord[];
