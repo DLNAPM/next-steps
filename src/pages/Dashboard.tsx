@@ -87,12 +87,15 @@ export default function Dashboard() {
             <p className="text-indigo-100 mb-6 leading-relaxed">
               Organizing these records now ensures your loved ones aren't left searching for critical information during difficult times. You're giving them peace of mind.
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
                <Link to="/assets" className="px-4 py-2 bg-white text-indigo-900 rounded-lg font-medium text-sm hover:bg-indigo-50 transition-colors">
                  Add Assets
                </Link>
                <Link to="/insurance" className="px-4 py-2 bg-indigo-800 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 transition-colors">
                  Add Insurance
+               </Link>
+               <Link to="/trusts" className="px-4 py-2 bg-indigo-800 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 transition-colors">
+                 Add Family Trusts
                </Link>
             </div>
           </div>
