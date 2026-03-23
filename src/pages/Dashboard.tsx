@@ -60,17 +60,23 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="space-y-4">
-              {[...records].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5).map(record => (
+              {[...records].sort((a, b) => {
+                const aTime = a.updatedAt || a.createdAt || 0;
+                const bTime = b.updatedAt || b.createdAt || 0;
+                return bTime - aTime;
+              }).slice(0, 5).map(record => {
+                const dateVal = record.updatedAt || record.createdAt || Date.now();
+                return (
                 <div key={record.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
                   <div>
                     <p className="font-medium text-slate-900">{record.name}</p>
-                    <p className="text-xs text-slate-500 capitalize">{record.type} • {new Date(record.updatedAt).toLocaleDateString()}</p>
+                    <p className="text-xs text-slate-500 capitalize">{record.type} • {new Date(dateVal).toLocaleDateString()}</p>
                   </div>
-                  <Link to={`/${record.type === 'asset' ? 'assets' : record.type === 'debt' ? 'debts' : 'insurance'}`} className="text-sm text-indigo-600 hover:underline">
+                  <Link to={`/${record.type === 'asset' ? 'assets' : record.type === 'debt' ? 'debts' : record.type === 'trust' ? 'trusts' : 'insurance'}`} className="text-sm text-indigo-600 hover:underline">
                     View
                   </Link>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </div>

@@ -45,6 +45,13 @@ export default function App() {
                   description="Keep track of policies and beneficiary information." 
                 />
               } />
+              <Route path="trusts" element={
+                <CategoryList 
+                  type="trust" 
+                  title="Family Trusts" 
+                  description="Manage revocable and irrevocable trusts and trustee details." 
+                />
+              } />
               <Route path="reports" element={<Reports />} />
               <Route path="data" element={<DataManagement />} />
               <Route path="share" element={<ShareAccess />} />

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, LayoutDashboard, Landmark, CreditCard, Shield, Menu, X, Users, FileText, Database, HelpCircle } from 'lucide-react';
+import { LogOut, LayoutDashboard, Landmark, CreditCard, Shield, Menu, X, Users, FileText, Database, HelpCircle, Briefcase } from 'lucide-react';
 import { cn } from '../lib/utils';
 import HelpModal from './HelpModal';
 import AppIcon from './AppIcon';
@@ -23,6 +23,7 @@ export default function Layout() {
     { path: '/assets', label: 'Assets', icon: Landmark },
     { path: '/debts', label: 'Debts', icon: CreditCard },
     { path: '/insurance', label: 'Insurance', icon: Shield },
+    { path: '/trusts', label: 'Family Trusts', icon: Briefcase },
     { path: '/reports', label: 'Reports', icon: FileText },
     { path: '/data', label: 'Data Import/Export', icon: Database },
     { path: '/share', label: 'Share Access', icon: Users },

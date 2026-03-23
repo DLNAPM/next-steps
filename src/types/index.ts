@@ -1,7 +1,8 @@
-export type RecordType = 'asset' | 'debt' | 'insurance';
+export type RecordType = 'asset' | 'debt' | 'insurance' | 'trust';
 
 export type AssetCategory = 'bank' | 'real-estate' | 'investment' | 'pension' | 'other';
 export type DebtCategory = 'mortgage' | 'credit-card' | 'loan' | 'llc' | 'other';
+export type TrustType = 'revocable' | 'irrevocable';
 
 export interface BaseRecord {
   id: string;
@@ -48,7 +49,14 @@ export interface InsuranceRecord extends BaseRecord {
   representativeContact?: string;
 }
 
-export type FinancialRecord = AssetRecord | DebtRecord | InsuranceRecord;
+export interface TrustRecord extends BaseRecord {
+  type: 'trust';
+  trustType?: TrustType;
+  trusteeDetails?: string;
+  url?: string;
+}
+
+export type FinancialRecord = AssetRecord | DebtRecord | InsuranceRecord | TrustRecord;
 
 export interface UserProfile {
   uid: string;

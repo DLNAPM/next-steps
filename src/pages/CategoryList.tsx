@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useForm } from 'react-hook-form';
-import { FinancialRecord, AssetRecord, DebtRecord, InsuranceRecord } from '../types';
+import { FinancialRecord, AssetRecord, DebtRecord, InsuranceRecord, TrustRecord } from '../types';
 import { Plus, Trash2, ExternalLink, Edit2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-type RecordType = 'asset' | 'debt' | 'insurance';
+type RecordType = 'asset' | 'debt' | 'insurance' | 'trust';
 
 interface CategoryListProps {
   type: RecordType;
@@ -53,7 +53,7 @@ export default function CategoryList({ type, title, description }: CategoryListP
           className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors shadow-sm"
         >
           <Plus className="w-5 h-5" />
-          Add {type === 'asset' ? 'Asset' : type === 'debt' ? 'Debt' : 'Policy'}
+          Add {type === 'asset' ? 'Asset' : type === 'debt' ? 'Debt' : type === 'insurance' ? 'Policy' : 'Trust'}
         </button>
       </div>
 
@@ -170,6 +170,7 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
             "w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg",
             record.type === 'asset' ? "bg-emerald-100 text-emerald-700" :
             record.type === 'debt' ? "bg-rose-100 text-rose-700" :
+            record.type === 'trust' ? "bg-purple-100 text-purple-700" :
             "bg-blue-100 text-blue-700"
           )}>
             {record.name[0].toUpperCase()}
@@ -181,7 +182,8 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
             </div>
             <p className="text-sm text-slate-500">
               {/* Show a key detail based on type */}
-              {(record as any).accountNumber ? `Acct: ••••${(record as any).accountNumber.slice(-4)}` : 'No Account #'}
+              {record.type === 'trust' ? ((record as TrustRecord).trustType ? `Type: ${(record as TrustRecord).trustType}` : 'Trust') :
+              (record as any).accountNumber ? `Acct: ••••${(record as any).accountNumber.slice(-4)}` : 'No Account #'}
               {record.type === 'insurance' && (record as InsuranceRecord).amount && ` • ${(record as InsuranceRecord).amount}`}
               {(record as any).currentBalance && ` • ${(record as any).currentBalance}`}
               {record.type === 'asset' && (record as AssetRecord).category === 'real-estate' && (record as AssetRecord).currentValue && ` • ${(record as AssetRecord).currentValue}`}
@@ -298,6 +300,23 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
                 )}
               </>
             )}
+
+            {record.type === 'trust' && (
+              <>
+                {(record as TrustRecord).trustType && (
+                  <div>
+                    <span className="font-semibold text-slate-700 block mb-1">Type of Trust</span>
+                    <span className="text-slate-600 capitalize">{(record as TrustRecord).trustType}</span>
+                  </div>
+                )}
+                {(record as TrustRecord).trusteeDetails && (
+                  <div className="col-span-full">
+                    <span className="font-semibold text-slate-700 block mb-1">Trustee Details</span>
+                    <p className="text-slate-600 bg-white p-3 rounded-lg border border-slate-200">{(record as TrustRecord).trusteeDetails}</p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -327,6 +346,9 @@ type FormData = {
   amount?: string;
   representativeName?: string;
   representativeContact?: string;
+  // Trust specific
+  trustType?: string;
+  trusteeDetails?: string;
 };
 
 function RecordFormModal({ type, initialData, onClose, onSubmit }: { 
@@ -346,6 +368,7 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
       purchasePrice: '',
       currentValue: '',
       category: type === 'asset' ? 'bank' : type === 'debt' ? 'mortgage' : undefined,
+      trustType: type === 'trust' ? 'revocable' : undefined,
     }
   });
 
@@ -356,7 +379,7 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
           <h3 className="text-xl font-bold text-slate-900">
-            {initialData ? 'Edit' : 'Add'} {type === 'asset' ? 'Asset' : type === 'debt' ? 'Debt' : 'Insurance Policy'}
+            {initialData ? 'Edit' : 'Add'} {type === 'asset' ? 'Asset' : type === 'debt' ? 'Debt' : type === 'insurance' ? 'Insurance Policy' : 'Family Trust'}
           </h3>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full">
             <X className="w-5 h-5 text-slate-500" />
@@ -371,7 +394,7 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
               <input {...register('name', { required: true })} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" placeholder="e.g. Chase Checking, Home Mortgage" />
             </div>
 
-            {type !== 'insurance' && (
+            {type !== 'insurance' && type !== 'trust' && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
                 <select {...register('category')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none">
@@ -396,12 +419,24 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {type === 'trust' && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Account Number</label>
-                <input {...register('accountNumber')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="XXXX-XXXX" />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Type of Trust</label>
+                <select {...register('trustType')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none">
+                  <option value="revocable">Revocable</option>
+                  <option value="irrevocable">Irrevocable</option>
+                </select>
               </div>
-              <div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {type !== 'trust' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Account Number</label>
+                  <input {...register('accountNumber')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="XXXX-XXXX" />
+                </div>
+              )}
+              <div className={type === 'trust' ? 'col-span-full' : ''}>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Website URL</label>
                 <input {...register('url')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="https://..." />
               </div>
@@ -500,6 +535,16 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
                 </div>
               </div>
             </div>
+          )}
+
+          {type === 'trust' && (
+             <div className="space-y-4 pt-4 border-t border-slate-100">
+               <h4 className="font-medium text-slate-900">Trust Details</h4>
+               <div>
+                 <label className="block text-sm font-medium text-slate-700 mb-1">Trustee Details</label>
+                 <textarea {...register('trusteeDetails')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" rows={3} placeholder="Names and contact info for trustees..." />
+               </div>
+             </div>
           )}
 
           <div className="pt-4 border-t border-slate-100">
