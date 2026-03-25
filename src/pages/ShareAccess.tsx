@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useForm } from 'react-hook-form';
-import { UserPlus, Trash2, Shield, Mail, Check, AlertCircle } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Mail, Check, AlertCircle, Lock } from 'lucide-react';
 import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -37,6 +37,12 @@ export default function ShareAccess() {
 
   const onSubmit = async (data: { email: string; permission: 'read' | 'edit' }) => {
     if (!user || !db) return;
+    
+    if (!user.isPremium) {
+      setError('Inviting family members is a Premium (PRO) feature. Please upgrade to use this feature.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -123,12 +129,14 @@ export default function ShareAccess() {
             </select>
           </div>
           <button
-            type="submit"
+            type={user?.isPremium ? "submit" : "button"}
+            onClick={!user?.isPremium ? () => setError('Inviting family members is a Premium (PRO) feature. Please upgrade to use this feature.') : undefined}
             disabled={loading}
-            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            className={`inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 ${user?.isPremium ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
           >
-            <UserPlus className="w-4 h-4 mr-2" />
+            {user?.isPremium ? <UserPlus className="w-4 h-4 mr-2" /> : <Lock className="w-4 h-4 mr-2" />}
             {loading ? 'Sending...' : 'Invite'}
+            {!user?.isPremium && <span className="ml-2 text-[10px] bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full font-bold tracking-wider">PRO</span>}
           </button>
         </form>
         {error && (

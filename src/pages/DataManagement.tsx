@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Download, Upload, FileJson, FileSpreadsheet, AlertCircle, Check } from 'lucide-react';
+import { Download, Upload, FileJson, FileSpreadsheet, AlertCircle, Check, Lock } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { FinancialRecord } from '../types';
@@ -11,18 +11,29 @@ export default function DataManagement() {
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [duplicateResolution, setDuplicateResolution] = useState<{
     duplicates: { existing: FinancialRecord, new: any }[],
     newRecords: any[]
   } | null>(null);
 
   const handleDownloadJson = () => {
+    if (!user?.isPremium) {
+      setExportError('Download JSON is a Premium (PRO) feature. Please upgrade to use this feature.');
+      return;
+    }
+    setExportError(null);
     const dataStr = JSON.stringify(records, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     saveAs(blob, `next-steps-data-${new Date().toISOString().split('T')[0]}.json`);
   };
 
   const handleDownloadExcel = () => {
+    if (!user?.isPremium) {
+      setExportError('Download Excel is a Premium (PRO) feature. Please upgrade to use this feature.');
+      return;
+    }
+    setExportError(null);
     const worksheet = XLSX.utils.json_to_sheet(records);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Financial Records");
@@ -130,22 +141,30 @@ export default function DataManagement() {
           <p className="text-slate-600 mb-6">
             Download a copy of your financial records. Keep this file secure as it contains sensitive information.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 mb-4">
             <button
               onClick={handleDownloadExcel}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors shadow-sm"
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors shadow-sm ${user?.isPremium ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
             >
-              <FileSpreadsheet className="w-5 h-5" />
+              {user?.isPremium ? <FileSpreadsheet className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
               Download Excel
+              {!user?.isPremium && <span className="ml-1 text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-bold tracking-wider">PRO</span>}
             </button>
             <button
               onClick={handleDownloadJson}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl font-medium hover:bg-slate-900 transition-colors shadow-sm"
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors shadow-sm ${user?.isPremium ? 'bg-slate-800 text-white hover:bg-slate-900' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
             >
-              <FileJson className="w-5 h-5" />
+              {user?.isPremium ? <FileJson className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
               Download JSON
+              {!user?.isPremium && <span className="ml-1 text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-bold tracking-wider">PRO</span>}
             </button>
           </div>
+          {exportError && (
+            <div className="p-4 bg-red-50 text-red-700 rounded-xl flex items-center gap-2 text-sm">
+              <AlertCircle className="w-5 h-5" />
+              {exportError}
+            </div>
+          )}
         </div>
 
         {/* Import Section */}

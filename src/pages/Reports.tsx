@@ -1,13 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Printer, FileText, PieChart } from 'lucide-react';
+import { Printer, FileText, PieChart, Lock, AlertCircle } from 'lucide-react';
 
 export default function Reports() {
   const { records } = useData();
   const { user } = useAuth();
+  const [error, setError] = useState<string | null>(null);
 
   const handlePrint = () => {
+    if (!user?.isPremium) {
+      setError('Print Report is a Premium (PRO) feature. Please upgrade to use this feature.');
+      return;
+    }
     window.print();
   };
 
@@ -36,12 +41,20 @@ export default function Reports() {
         </div>
         <button
           onClick={handlePrint}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors shadow-sm"
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors shadow-sm ${user?.isPremium ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
         >
-          <Printer className="w-5 h-5" />
+          {user?.isPremium ? <Printer className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
           Print Report
+          {!user?.isPremium && <span className="ml-1 text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-bold tracking-wider">PRO</span>}
         </button>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 text-red-700 rounded-xl flex items-center gap-2 text-sm print:hidden">
+          <AlertCircle className="w-5 h-5" />
+          {error}
+        </div>
+      )}
 
       {/* Print Header */}
       <div className="hidden print:block mb-8 border-b border-slate-200 pb-4">
