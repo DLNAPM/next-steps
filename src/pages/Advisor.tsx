@@ -51,6 +51,14 @@ export default function Advisor() {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    if (user?.isDemo) {
+      const userMessageCount = messages.filter(m => m.role === 'user').length;
+      if (userMessageCount >= 1) {
+        setError("Demo mode is limited to 1 question. Please sign in to continue using the AI Advisor.");
+        return;
+      }
+    }
+
     const userMessage = input.trim();
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
