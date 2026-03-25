@@ -72,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       photoURL: null,
       isGuest: true, // It behaves like guest (no firebase save), but with pre-loaded data
       isDemo: true,
+      isPremium: true,
     });
   };
 

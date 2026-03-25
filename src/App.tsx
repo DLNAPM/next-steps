@@ -10,6 +10,7 @@ import ShareAccess from './pages/ShareAccess';
 import Reports from './pages/Reports';
 import DataManagement from './pages/DataManagement';
 import QA from './pages/QA';
+import Advisor from './pages/Advisor';
 
 export default function App() {
   return (
@@ -57,6 +58,7 @@ export default function App() {
               <Route path="data" element={<DataManagement />} />
               <Route path="share" element={<ShareAccess />} />
               <Route path="qa" element={<QA />} />
+              <Route path="advisor" element={<Advisor />} />
             </Route>
           </Routes>
         </Router>

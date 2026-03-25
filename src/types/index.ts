@@ -65,4 +65,5 @@ export interface UserProfile {
   photoURL: string | null;
   isGuest: boolean;
   isDemo?: boolean;
+  isPremium?: boolean;
 }

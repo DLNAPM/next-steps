@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, LayoutDashboard, Landmark, CreditCard, Shield, Menu, X, Users, FileText, Database, HelpCircle, Briefcase, BookOpen } from 'lucide-react';
+import { LogOut, LayoutDashboard, Landmark, CreditCard, Shield, Menu, X, Users, FileText, Database, HelpCircle, Briefcase, BookOpen, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import HelpModal from './HelpModal';
 import AppIcon from './AppIcon';
@@ -28,6 +28,7 @@ export default function Layout() {
     { path: '/data', label: 'Data Import/Export', icon: Database },
     { path: '/share', label: 'Share Access', icon: Users },
     { path: '/qa', label: 'Glossary & Q&A', icon: BookOpen },
+    { path: '/advisor', label: 'AI Advisor', icon: Sparkles, premium: true },
   ];
 
   return (
@@ -62,14 +63,21 @@ export default function Layout() {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors",
+                  "flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-colors",
                   isActive 
                     ? "bg-indigo-50 text-indigo-700" 
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 )}
               >
-                <Icon className="w-5 h-5" />
-                {item.label}
+                <div className="flex items-center gap-3">
+                  <Icon className={cn("w-5 h-5", item.premium && !isActive ? "text-amber-500" : "")} />
+                  {item.label}
+                </div>
+                {item.premium && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                    Pro
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -131,14 +139,21 @@ export default function Layout() {
                   to={item.path}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg",
+                    "flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg",
                     isActive 
                       ? "bg-indigo-50 text-indigo-700" 
                       : "text-slate-600 hover:bg-slate-50"
                   )}
                 >
-                  <Icon className="w-5 h-5" />
-                  {item.label}
+                  <div className="flex items-center gap-3">
+                    <Icon className={cn("w-5 h-5", item.premium && !isActive ? "text-amber-500" : "")} />
+                    {item.label}
+                  </div>
+                  {item.premium && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                      Pro
+                    </span>
+                  )}
                 </Link>
               );
             })}
