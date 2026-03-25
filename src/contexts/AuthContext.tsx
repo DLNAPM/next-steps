@@ -14,6 +14,12 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const PREMIUM_EMAILS = [
+  'dlaniger.napm.consulting@gmail.com',
+  'reach_dlaniger@hotmail.com',
+  'monnib30228@gmail.com'
+];
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             displayName: firebaseUser.displayName,
             photoURL: firebaseUser.photoURL,
             isGuest: false,
+            isPremium: firebaseUser.email ? PREMIUM_EMAILS.includes(firebaseUser.email.toLowerCase()) : false,
           });
         } else {
           // Only clear user if we weren't in guest or demo mode
