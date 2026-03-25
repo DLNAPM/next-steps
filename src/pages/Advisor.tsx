@@ -69,7 +69,7 @@ ${contextData}
 Use this data to answer their questions accurately. If they ask about scenarios (e.g., "What happens if I pass away?"), use their specific assets, debts, insurance, and trusts to provide a personalized answer.
 Do not give formal legal or tax advice, but provide educational guidance based on standard financial planning principles. Be empathetic, professional, and clear.`;
 
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
       // We need to build the chat history
       const contents = messages.map(m => ({
