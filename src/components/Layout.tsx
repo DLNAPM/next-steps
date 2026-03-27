@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, LayoutDashboard, Landmark, CreditCard, Shield, Menu, X, Users, FileText, Database, HelpCircle, Briefcase, BookOpen, Sparkles } from 'lucide-react';
+import { LogOut, LayoutDashboard, Landmark, CreditCard, Shield, Menu, X, Users, FileText, Database, HelpCircle, Briefcase, BookOpen, Sparkles, Bot } from 'lucide-react';
 import { cn } from '../lib/utils';
 import HelpModal from './HelpModal';
 import AppIcon from './AppIcon';
@@ -10,8 +10,18 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const [isHelpOpen, setIsHelpOpen] = React.useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [showChatbotWidget, setShowChatbotWidget] = useState(false);
+
+  useEffect(() => {
+    // Show chatbot widget 30 seconds after mounting (logging in)
+    const timer = setTimeout(() => {
+      setShowChatbotWidget(true);
+    }, 30000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -172,11 +182,27 @@ export default function Layout() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto p-4 md:p-8">
+      <main className="flex-1 overflow-auto p-4 md:p-8 relative">
         <div className="max-w-5xl mx-auto">
           <Outlet />
         </div>
       </main>
+
+      {/* Floating Chatbot Widget */}
+      {showChatbotWidget && location.pathname !== '/advisor' && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="bg-white px-4 py-2 rounded-xl shadow-lg border border-slate-200 animate-bounce relative">
+            <span className="text-sm font-bold text-indigo-600 whitespace-nowrap">Chat With Us!</span>
+            <div className="absolute top-1/2 -right-2 transform -translate-y-1/2 w-0 h-0 border-t-8 border-t-transparent border-l-8 border-l-white border-b-8 border-b-transparent drop-shadow-sm"></div>
+          </div>
+          <button
+            onClick={() => navigate('/advisor')}
+            className="w-14 h-14 bg-indigo-600 text-white rounded-full shadow-xl flex items-center justify-center hover:bg-indigo-700 transition-all hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-500/30"
+          >
+            <Bot className="w-7 h-7" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
