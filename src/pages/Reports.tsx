@@ -102,7 +102,7 @@ export default function Reports() {
           <img 
             src={logoUrl || "/Copilot_NextSteps(EPS).jpg"} 
             alt="Next Steps Logo" 
-            className="h-12 w-auto object-contain"
+            className="h-[60px] w-auto object-contain"
             referrerPolicy="no-referrer"
           />
         </div>
@@ -312,7 +312,7 @@ export default function Reports() {
               <img 
                 src={logoUrl || "/Copilot_NextSteps(EPS).jpg"} 
                 alt="Next Steps Logo" 
-                className="h-16 w-auto object-contain"
+                className="h-20 w-auto object-contain"
                 referrerPolicy="no-referrer"
               />
             </div>
