@@ -42,11 +42,11 @@ export default function Layout() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row print:bg-white print:block">
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       
       {/* Sidebar (Desktop) */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 shadow-sm">
+      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 shadow-sm print:hidden">
         <div className="p-6 border-b border-slate-100 flex justify-between items-start">
           <div className="flex items-center gap-3">
             <AppIcon size="sm" className="rounded-lg" />
@@ -118,7 +118,7 @@ export default function Layout() {
       </aside>
 
       {/* Mobile Header */}
-      <div className="md:hidden bg-white border-b border-slate-200 p-4 flex items-center justify-between">
+      <div className="md:hidden bg-white border-b border-slate-200 p-4 flex items-center justify-between print:hidden">
         <div className="flex items-center gap-3">
           <AppIcon size="sm" className="rounded-lg" />
           <h1 className="text-xl font-bold text-slate-800">Next Steps</h1>
@@ -182,15 +182,15 @@ export default function Layout() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto p-4 md:p-8 relative">
-        <div className="max-w-5xl mx-auto">
+      <main className="flex-1 overflow-auto p-4 md:p-8 relative print:p-0 print:overflow-visible print:block">
+        <div className="max-w-5xl mx-auto print:max-w-none print:mx-0">
           <Outlet />
         </div>
       </main>
 
       {/* Floating Chatbot Widget */}
       {showChatbotWidget && location.pathname !== '/advisor' && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 print:hidden">
           <div className="bg-white px-4 py-2 rounded-xl shadow-lg border border-slate-200 animate-bounce relative">
             <span className="text-sm font-bold text-indigo-600 whitespace-nowrap">Chat With Us!</span>
             <div className="absolute top-1/2 -right-2 transform -translate-y-1/2 w-0 h-0 border-t-8 border-t-transparent border-l-8 border-l-white border-b-8 border-b-transparent drop-shadow-sm"></div>
