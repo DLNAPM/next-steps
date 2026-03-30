@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Printer, FileText, PieChart, Lock, AlertCircle } from 'lucide-react';
+import { Printer, FileText, PieChart, Lock, AlertCircle, Upload, X } from 'lucide-react';
 
 export default function Reports() {
   const { records } = useData();
   const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [reportType, setReportType] = useState<'standard' | 'accounts'>('standard');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   const handlePrint = () => {
     if (!user?.isPremium) {
@@ -15,6 +16,22 @@ export default function Reports() {
       return;
     }
     window.print();
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setError('Logo file size must be less than 2MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoUrl(reader.result as string);
+        setError(null);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const assets = records.filter(r => r.type === 'asset');
@@ -83,7 +100,7 @@ export default function Reports() {
             {reportType === 'standard' ? 'Next Steps - Family Financial Record' : 'Next Steps - Accounts Access Spreadsheet'}
           </h1>
           <img 
-            src="/Copilot_NextSteps(EPS).jpg" 
+            src={logoUrl || "/Copilot_NextSteps(EPS).jpg"} 
             alt="Next Steps Logo" 
             className="h-12 w-auto object-contain"
             referrerPolicy="no-referrer"
@@ -270,12 +287,35 @@ export default function Reports() {
                 <span className="block mt-1 font-semibold text-rose-600">Never store passwords digitally in this app for security reasons.</span>
               </p>
             </div>
-            <img 
-              src="/Copilot_NextSteps(EPS).jpg" 
-              alt="Next Steps Logo" 
-              className="h-16 w-auto object-contain"
-              referrerPolicy="no-referrer"
-            />
+            <div className="flex items-center gap-6">
+              <div className="flex flex-col items-end gap-2">
+                <label className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 cursor-pointer hover:bg-slate-50 transition-colors shadow-sm">
+                  <Upload className="w-3.5 h-3.5" />
+                  {logoUrl ? 'Change Logo' : 'Upload Logo'}
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={handleLogoUpload}
+                  />
+                </label>
+                {logoUrl && (
+                  <button 
+                    onClick={() => setLogoUrl(null)}
+                    className="flex items-center gap-1 text-[10px] text-rose-600 hover:text-rose-700 font-medium"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                    Remove Custom Logo
+                  </button>
+                )}
+              </div>
+              <img 
+                src={logoUrl || "/Copilot_NextSteps(EPS).jpg"} 
+                alt="Next Steps Logo" 
+                className="h-16 w-auto object-contain"
+                referrerPolicy="no-referrer"
+              />
+            </div>
           </div>
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden print:border-slate-300">
             <table className="min-w-full divide-y divide-slate-200">
