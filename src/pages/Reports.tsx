@@ -78,9 +78,17 @@ export default function Reports() {
 
       {/* Print Header */}
       <div className="hidden print:block mb-8 border-b border-slate-200 pb-4">
-        <h1 className="text-2xl font-bold text-slate-900">
-          {reportType === 'standard' ? 'Next Steps - Family Financial Record' : 'Next Steps - Accounts Access Spreadsheet'}
-        </h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold text-slate-900">
+            {reportType === 'standard' ? 'Next Steps - Family Financial Record' : 'Next Steps - Accounts Access Spreadsheet'}
+          </h1>
+          <img 
+            src="/Copilot_NextSteps(EPS).jpg" 
+            alt="Next Steps Logo" 
+            className="h-12 w-auto object-contain"
+            referrerPolicy="no-referrer"
+          />
+        </div>
         <p className="text-slate-500">Generated for {user?.displayName} on {new Date().toLocaleDateString()}</p>
         {reportType === 'accounts' && (
           <p className="text-xs text-slate-400 mt-2 italic">
@@ -251,15 +259,23 @@ export default function Reports() {
         </>
       ) : (
         <section className="animate-fade-in">
-          <div className="mb-6 print:hidden">
-            <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <Lock className="w-5 h-5 text-indigo-600" />
-              Accounts Access Spreadsheet
-            </h3>
-            <p className="text-sm text-slate-500 mt-2">
-              This spreadsheet is designed to be printed and filled out manually to help your loved ones access your accounts in an emergency. 
-              <span className="block mt-1 font-semibold text-rose-600">Never store passwords digitally in this app for security reasons.</span>
-            </p>
+          <div className="mb-6 print:hidden flex items-start justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <Lock className="w-5 h-5 text-indigo-600" />
+                Accounts Access Spreadsheet
+              </h3>
+              <p className="text-sm text-slate-500 mt-2">
+                This spreadsheet is designed to be printed and filled out manually to help your loved ones access your accounts in an emergency. 
+                <span className="block mt-1 font-semibold text-rose-600">Never store passwords digitally in this app for security reasons.</span>
+              </p>
+            </div>
+            <img 
+              src="/Copilot_NextSteps(EPS).jpg" 
+              alt="Next Steps Logo" 
+              className="h-16 w-auto object-contain"
+              referrerPolicy="no-referrer"
+            />
           </div>
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden print:border-slate-300">
             <table className="min-w-full divide-y divide-slate-200">
