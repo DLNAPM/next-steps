@@ -95,7 +95,7 @@ export default function Dashboard() {
                  Add Insurance
                </Link>
                <Link to="/trusts" className="px-4 py-2 bg-indigo-800 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 transition-colors">
-                 Add Family Trusts
+                 Add Family Trusts & Wills
                </Link>
             </div>
           </div>

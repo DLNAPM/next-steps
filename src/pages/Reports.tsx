@@ -335,7 +335,7 @@ export default function Reports() {
                   allAccounts.map((record) => (
                     <tr key={record.id} className="break-inside-avoid">
                       <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{record.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{record.type}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{record.type === 'trust' ? 'Trust / Will' : record.type}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{(record as any).accountNumber || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap border-l border-slate-100 min-w-[150px]"></td>
                       <td className="px-6 py-4 whitespace-nowrap border-l border-slate-100 min-w-[150px]"></td>

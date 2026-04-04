@@ -33,7 +33,7 @@ export default function Layout() {
     { path: '/assets', label: 'Assets', icon: Landmark },
     { path: '/debts', label: 'Debts', icon: CreditCard },
     { path: '/insurance', label: 'Insurance', icon: Shield },
-    { path: '/trusts', label: 'Family Trusts', icon: Briefcase },
+    { path: '/trusts', label: 'Family Trusts & Wills', icon: Briefcase },
     { path: '/reports', label: 'Reports', icon: FileText },
     { path: '/data', label: 'Data Import/Export', icon: Database },
     { path: '/share', label: 'Share Access', icon: Users },

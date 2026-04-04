@@ -50,8 +50,8 @@ export default function App() {
               <Route path="trusts" element={
                 <CategoryList 
                   type="trust" 
-                  title="Family Trusts" 
-                  description="Manage revocable and irrevocable trusts and trustee details." 
+                  title="Family Trusts & Wills" 
+                  description="Manage revocable and irrevocable trusts, wills, and trustee/executor details." 
                 />
               } />
               <Route path="reports" element={<Reports />} />

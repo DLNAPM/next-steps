@@ -2,7 +2,7 @@ export type RecordType = 'asset' | 'debt' | 'insurance' | 'trust';
 
 export type AssetCategory = 'bank' | 'real-estate' | 'investment' | 'pension' | 'other';
 export type DebtCategory = 'mortgage' | 'credit-card' | 'loan' | 'llc' | 'other';
-export type TrustType = 'revocable' | 'irrevocable';
+export type TrustType = 'revocable' | 'irrevocable' | 'will';
 
 export interface BaseRecord {
   id: string;
