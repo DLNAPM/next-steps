@@ -332,15 +332,22 @@ export default function Reports() {
                 {allAccounts.length === 0 ? (
                   <tr><td colSpan={5} className="px-6 py-4 text-center text-slate-500">No accounts recorded.</td></tr>
                 ) : (
-                  allAccounts.map((record) => (
+                  allAccounts.map((record) => {
+                    const typeDisplay = record.type === 'trust' ? 'Trust / Will' : record.type;
+                    const acctDisplay = (record as any).accountNumber || '-';
+                    const rowLength = (record.name?.length || 0) + typeDisplay.length + acctDisplay.length;
+                    const wrapClass = rowLength > 60 ? 'whitespace-normal break-words' : 'whitespace-nowrap';
+
+                    return (
                     <tr key={record.id} className="break-inside-avoid">
-                      <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{record.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{record.type === 'trust' ? 'Trust / Will' : record.type}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{(record as any).accountNumber || '-'}</td>
+                      <td className={`px-6 py-4 font-medium text-slate-900 ${wrapClass} min-w-[150px]`}>{record.name}</td>
+                      <td className={`px-6 py-4 text-sm text-slate-500 capitalize ${wrapClass} min-w-[100px]`}>{typeDisplay}</td>
+                      <td className={`px-6 py-4 text-sm text-slate-500 ${wrapClass} min-w-[150px]`}>{acctDisplay}</td>
                       <td className="px-6 py-4 whitespace-nowrap border-l border-slate-100 min-w-[150px]"></td>
                       <td className="px-6 py-4 whitespace-nowrap border-l border-slate-100 min-w-[150px]"></td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
