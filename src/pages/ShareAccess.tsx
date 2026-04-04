@@ -6,7 +6,7 @@ import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, serverTim
 import { db } from '../lib/firebase';
 
 interface SharedUser {
-  email: string;
+  sharedWithEmail: string;
   permission: 'read' | 'edit';
   status: 'pending' | 'accepted';
   ownerId: string;
@@ -158,13 +158,13 @@ export default function ShareAccess() {
             </li>
           ) : (
             sharedUsers.map((u) => (
-              <li key={u.email} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+              <li key={u.sharedWithEmail} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                    {u.email[0].toUpperCase()}
+                    {u.sharedWithEmail?.[0]?.toUpperCase() || '?'}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{u.email}</p>
+                    <p className="text-sm font-medium text-slate-900">{u.sharedWithEmail}</p>
                     <div className="flex items-center gap-2 text-xs text-slate-500">
                       <span className={u.permission === 'edit' ? 'text-amber-600' : 'text-slate-500'}>
                         {u.permission === 'edit' ? 'Can Edit' : 'Read Only'}
@@ -177,7 +177,7 @@ export default function ShareAccess() {
                   </div>
                 </div>
                 <button
-                  onClick={() => removeUser(u.email)}
+                  onClick={() => removeUser(u.sharedWithEmail)}
                   className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   title="Remove Access"
                 >
