@@ -2,9 +2,18 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { GoogleGenAI } from '@google/genai';
-import { Send, Bot, User, Lock, Sparkles, AlertCircle } from 'lucide-react';
+import { Send, Bot, User, Lock, Sparkles, AlertCircle, Save, History, X, Plus, MessageSquare } from 'lucide-react';
 import { cn } from '../lib/utils';
 import ReactMarkdown from 'react-markdown';
+import { collection, addDoc, getDocs, query, where, serverTimestamp, orderBy } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+
+interface SavedSession {
+  id: string;
+  name: string;
+  createdAt: any;
+  messages: { role: 'user' | 'model', text: string }[];
+}
 
 export default function Advisor() {
   const { user } = useAuth();
@@ -20,6 +29,13 @@ export default function Advisor() {
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [sessionName, setSessionName] = useState('');
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -27,6 +43,76 @@ export default function Advisor() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (user && !user.isDemo && !user.isGuest && db) {
+      fetchSavedSessions();
+    }
+  }, [user]);
+
+  const fetchSavedSessions = async () => {
+    if (!user || !db) return;
+    try {
+      const q = query(
+        collection(db, 'advisor_sessions'),
+        where('userId', '==', user.uid),
+        orderBy('createdAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      const sessions: SavedSession[] = [];
+      snapshot.forEach(doc => {
+        sessions.push({ id: doc.id, ...doc.data() } as SavedSession);
+      });
+      setSavedSessions(sessions);
+    } catch (err) {
+      console.error("Error fetching saved sessions:", err);
+    }
+  };
+
+  const handleSaveSession = async () => {
+    if (!user || !db || !sessionName.trim() || messages.length <= 1) return;
+    
+    setIsSaving(true);
+    try {
+      const docRef = await addDoc(collection(db, 'advisor_sessions'), {
+        userId: user.uid,
+        name: sessionName.trim(),
+        messages: messages,
+        createdAt: serverTimestamp()
+      });
+      
+      setCurrentSessionId(docRef.id);
+      setIsSaveModalOpen(false);
+      setSessionName('');
+      await fetchSavedSessions();
+    } catch (err) {
+      console.error("Error saving session:", err);
+      setError("Failed to save session. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const loadSession = (session: SavedSession) => {
+    setMessages(session.messages);
+    setCurrentSessionId(session.id);
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+  };
+
+  const startNewSession = () => {
+    setMessages([
+      {
+        role: 'model',
+        text: "Hello! I'm your AI Family Financial Advisor. I can answer questions about your financial data, estate planning, and help you model different scenarios. How can I assist you today?"
+      }
+    ]);
+    setCurrentSessionId(null);
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+  };
 
   if (!user?.isPremium) {
     return (
@@ -113,17 +199,89 @@ Do not give formal legal or tax advice, but provide educational guidance based o
   };
 
   return (
-    <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-      {/* Header */}
-      <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-3">
-        <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white">
-          <Bot className="w-6 h-6" />
+    <div className="max-w-6xl mx-auto h-[calc(100vh-8rem)] flex gap-6">
+      {/* Sidebar for Saved Sessions */}
+      <div className={cn(
+        "bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col transition-all duration-300 overflow-hidden",
+        isSidebarOpen ? "w-64 md:w-80 opacity-100" : "w-0 opacity-0 md:w-0 border-0"
+      )}>
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+          <h3 className="font-bold text-slate-900 flex items-center gap-2">
+            <History className="w-5 h-5 text-indigo-600" />
+            Saved Sessions
+          </h3>
+          <button onClick={() => setIsSidebarOpen(false)} className="p-1 hover:bg-slate-200 rounded-lg text-slate-500">
+            <X className="w-5 h-5" />
+          </button>
         </div>
-        <div>
-          <h2 className="text-lg font-bold text-slate-900">AI Financial Advisor</h2>
-          <p className="text-sm text-slate-500">Premium Support</p>
+        <div className="p-4 border-b border-slate-100">
+          <button 
+            onClick={startNewSession}
+            className="w-full flex items-center justify-center gap-2 py-2 bg-indigo-50 text-indigo-700 rounded-xl font-medium hover:bg-indigo-100 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Chat
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {savedSessions.length === 0 ? (
+            <p className="text-center text-sm text-slate-500 py-8">No saved sessions yet.</p>
+          ) : (
+            savedSessions.map(session => (
+              <button
+                key={session.id}
+                onClick={() => loadSession(session)}
+                className={cn(
+                  "w-full text-left px-4 py-3 rounded-xl flex items-start gap-3 transition-colors",
+                  currentSessionId === session.id ? "bg-indigo-50 text-indigo-900" : "hover:bg-slate-50 text-slate-700"
+                )}
+              >
+                <MessageSquare className={cn("w-5 h-5 mt-0.5 shrink-0", currentSessionId === session.id ? "text-indigo-600" : "text-slate-400")} />
+                <div className="overflow-hidden">
+                  <p className="font-medium truncate">{session.name}</p>
+                  <p className="text-xs text-slate-500 truncate">
+                    {session.createdAt?.toDate ? session.createdAt.toDate().toLocaleDateString() : 'Just now'}
+                  </p>
+                </div>
+              </button>
+            ))
+          )}
         </div>
       </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+        {/* Header */}
+        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {!isSidebarOpen && (
+              <button 
+                onClick={() => setIsSidebarOpen(true)}
+                className="p-2 hover:bg-slate-200 rounded-lg text-slate-500 transition-colors"
+                title="View Saved Sessions"
+              >
+                <History className="w-5 h-5" />
+              </button>
+            )}
+            <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white">
+              <Bot className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">AI Financial Advisor</h2>
+              <p className="text-sm text-slate-500">Premium Support</p>
+            </div>
+          </div>
+          
+          <button
+            onClick={() => setIsSaveModalOpen(true)}
+            disabled={messages.length <= 1 || currentSessionId !== null}
+            className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+            title={currentSessionId ? "Session already saved" : "Save this session"}
+          >
+            <Save className="w-4 h-4" />
+            <span className="hidden sm:inline">{currentSessionId ? 'Saved' : 'Save Session'}</span>
+          </button>
+        </div>
 
       {/* Chat Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50/50">
@@ -182,19 +340,75 @@ Do not give formal legal or tax advice, but provide educational guidance based o
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder="Ask about your financial data or estate planning scenarios..."
             className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-            disabled={isLoading}
+            disabled={isLoading || currentSessionId !== null}
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || currentSessionId !== null}
             className="px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
           >
             <Send className="w-5 h-5" />
           </button>
         </div>
-        <p className="text-xs text-slate-400 mt-2 text-center">
-          AI Advisor provides educational guidance, not formal legal or tax advice.
-        </p>
+        {currentSessionId !== null ? (
+          <p className="text-xs text-amber-600 mt-2 text-center font-medium">
+            You are viewing a saved session. Start a new chat to ask more questions.
+          </p>
+        ) : (
+          <p className="text-xs text-slate-400 mt-2 text-center">
+            AI Advisor provides educational guidance, not formal legal or tax advice.
+          </p>
+        )}
+      </div>
+
+      {/* Save Modal */}
+      {isSaveModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <Save className="w-5 h-5 text-indigo-600" />
+                Save Session
+              </h3>
+              <button onClick={() => setIsSaveModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-slate-600 text-sm">
+                Give this session a name so you can refer back to these questions and answers later.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Session Name</label>
+                <input
+                  type="text"
+                  value={sessionName}
+                  onChange={(e) => setSessionName(e.target.value)}
+                  placeholder="e.g., Estate Tax Questions"
+                  className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && handleSaveSession()}
+                />
+              </div>
+            </div>
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+              <button
+                onClick={() => setIsSaveModalOpen(false)}
+                className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveSession}
+                disabled={!sessionName.trim() || isSaving}
+                className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {isSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
