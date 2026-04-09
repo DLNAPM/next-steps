@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { Printer, FileText, PieChart, Lock, AlertCircle, Upload, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Reports() {
   const { records } = useData();
   const { user } = useAuth();
+  const { settings } = useSettings();
   const [error, setError] = useState<string | null>(null);
   const [reportType, setReportType] = useState<'standard' | 'accounts'>('standard');
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   const handlePrint = () => {
     if (!user?.isPremium) {
@@ -16,22 +18,6 @@ export default function Reports() {
       return;
     }
     window.print();
-  };
-
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        setError('Logo file size must be less than 2MB.');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoUrl(reader.result as string);
-        setError(null);
-      };
-      reader.readAsDataURL(file);
-    }
   };
 
   const assets = records.filter(r => r.type === 'asset');
@@ -52,6 +38,8 @@ export default function Reports() {
     acc[cat] = (acc[cat] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  const logoUrl = settings.logoUrl || "/Copilot_NextSteps(EPS).jpg";
 
   return (
     <div className="space-y-8 print:space-y-4">
@@ -289,28 +277,16 @@ export default function Reports() {
             </div>
             <div className="flex items-center gap-6">
               <div className="flex flex-col items-end gap-2">
-                <label className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 cursor-pointer hover:bg-slate-50 transition-colors shadow-sm">
+                <Link 
+                  to="/settings"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 cursor-pointer hover:bg-slate-50 transition-colors shadow-sm"
+                >
                   <Upload className="w-3.5 h-3.5" />
-                  {logoUrl ? 'Change Logo' : 'Upload Logo'}
-                  <input 
-                    type="file" 
-                    className="hidden" 
-                    accept="image/*" 
-                    onChange={handleLogoUpload}
-                  />
-                </label>
-                {logoUrl && (
-                  <button 
-                    onClick={() => setLogoUrl(null)}
-                    className="flex items-center gap-1 text-[10px] text-rose-600 hover:text-rose-700 font-medium"
-                  >
-                    <X className="w-2.5 h-2.5" />
-                    Remove Custom Logo
-                  </button>
-                )}
+                  {settings.logoUrl ? 'Change Logo' : 'Upload Logo'}
+                </Link>
               </div>
               <img 
-                src={logoUrl || "/Copilot_NextSteps(EPS).jpg"} 
+                src={logoUrl} 
                 alt="Next Steps Logo" 
                 className="h-20 w-auto object-contain"
                 referrerPolicy="no-referrer"

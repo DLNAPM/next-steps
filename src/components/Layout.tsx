@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, LayoutDashboard, Landmark, CreditCard, Shield, Menu, X, Users, FileText, Database, HelpCircle, Briefcase, BookOpen, Sparkles, Bot } from 'lucide-react';
+import { LogOut, LayoutDashboard, Landmark, CreditCard, Shield, Menu, X, Users, FileText, Database, HelpCircle, Briefcase, BookOpen, Sparkles, Bot, Settings } from 'lucide-react';
 import { cn } from '../lib/utils';
 import HelpModal from './HelpModal';
 import AppIcon from './AppIcon';
@@ -39,6 +39,7 @@ export default function Layout() {
     { path: '/share', label: 'Share Access', icon: Users },
     { path: '/qa', label: 'Glossary & Q&A', icon: BookOpen },
     { path: '/advisor', label: 'AI Advisor', icon: Sparkles, premium: true },
+    { path: '/settings', label: 'Settings', icon: Settings },
   ];
 
   return (

@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { GoogleGenAI } from '@google/genai';
-import { Send, Bot, User, Lock, Sparkles, AlertCircle, Save, History, X, Plus, MessageSquare, Trash2, Share2 } from 'lucide-react';
+import { Send, Bot, User, Lock, Sparkles, AlertCircle, Save, History, X, Plus, MessageSquare, Trash2, Share2, Printer } from 'lucide-react';
 import { cn } from '../lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { collection, addDoc, getDocs, query, where, serverTimestamp, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
@@ -19,6 +20,7 @@ interface SavedSession {
 export default function Advisor() {
   const { user } = useAuth();
   const { records } = useData();
+  const { settings } = useSettings();
   const [messages, setMessages] = useState<{ role: 'user' | 'model', text: string }[]>([
     {
       role: 'model',
@@ -293,11 +295,17 @@ Do not give formal legal or tax advice, but provide educational guidance based o
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const logoUrl = settings.logoUrl || "/Copilot_NextSteps(EPS).jpg";
+
   return (
-    <div className="max-w-6xl mx-auto h-[calc(100vh-8rem)] flex gap-6">
+    <div className="max-w-6xl mx-auto h-[calc(100vh-8rem)] flex gap-6 print:h-auto print:block">
       {/* Sidebar for Saved Sessions */}
       <div className={cn(
-        "bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col transition-all duration-300 overflow-hidden",
+        "bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col transition-all duration-300 overflow-hidden print:hidden",
         isSidebarOpen ? "w-64 md:w-80 opacity-100" : "w-0 opacity-0 md:w-0 border-0"
       )}>
         <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
@@ -374,9 +382,26 @@ Do not give formal legal or tax advice, but provide educational guidance based o
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+      <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative print:border-none print:shadow-none">
+        
+        {/* Print Header (Only visible when printing) */}
+        <div className="hidden print:block mb-8 border-b border-slate-200 pb-4">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold text-slate-900">
+              AI Advisor Session: {currentSessionId ? savedSessions.find(s => s.id === currentSessionId)?.name || 'Saved Session' : 'Current Session'}
+            </h1>
+            <img 
+              src={logoUrl} 
+              alt="Next Steps Logo" 
+              className="h-[60px] w-auto object-contain"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <p className="text-slate-500">Generated for {user?.displayName} on {new Date().toLocaleDateString()}</p>
+        </div>
+
         {/* Header */}
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between print:hidden">
           <div className="flex items-center gap-3">
             {!isSidebarOpen && (
               <button 
@@ -396,29 +421,46 @@ Do not give formal legal or tax advice, but provide educational guidance based o
             </div>
           </div>
           
-          <button
-            onClick={() => setIsSaveModalOpen(true)}
-            disabled={messages.length <= 1 || currentSessionId !== null}
-            className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
-            title={currentSessionId ? "Session already saved" : "Save this session"}
-          >
-            <Save className="w-4 h-4" />
-            <span className="hidden sm:inline">{currentSessionId ? 'Saved' : 'Save Session'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrint}
+              disabled={messages.length <= 1}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+              title="Print Session"
+            >
+              <Printer className="w-4 h-4" />
+              <span className="hidden sm:inline">Print</span>
+            </button>
+            <button
+              onClick={() => setIsSaveModalOpen(true)}
+              disabled={messages.length <= 1 || currentSessionId !== null}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+              title={currentSessionId ? "Session already saved" : "Save this session"}
+            >
+              <Save className="w-4 h-4" />
+              <span className="hidden sm:inline">{currentSessionId ? 'Saved' : 'Save Session'}</span>
+            </button>
+          </div>
         </div>
 
       {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50/50">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50/50 print:overflow-visible print:bg-white print:p-0">
         {messages.map((msg, idx) => (
-          <div key={idx} className={cn("flex gap-4", msg.role === 'user' ? "flex-row-reverse" : "")}>
+          <div key={idx} className={cn("flex gap-4 print:gap-2 print:mb-6", msg.role === 'user' ? "flex-row-reverse print:flex-row" : "")}>
             <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
+              "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 print:hidden",
               msg.role === 'user' ? "bg-slate-200 text-slate-600" : "bg-indigo-100 text-indigo-600"
             )}>
               {msg.role === 'user' ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
             </div>
+            
+            {/* Print-only labels */}
+            <div className="hidden print:block font-bold text-slate-900 w-24 shrink-0">
+              {msg.role === 'user' ? 'You:' : 'AI Advisor:'}
+            </div>
+
             <div className={cn(
-              "max-w-[80%] rounded-2xl px-5 py-3",
+              "max-w-[80%] rounded-2xl px-5 py-3 print:max-w-none print:p-0 print:rounded-none print:border-none print:bg-transparent print:text-slate-900 print:shadow-none",
               msg.role === 'user' 
                 ? "bg-indigo-600 text-white rounded-tr-none" 
                 : "bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm"
@@ -426,7 +468,7 @@ Do not give formal legal or tax advice, but provide educational guidance based o
               {msg.role === 'user' ? (
                 <p className="whitespace-pre-wrap">{msg.text}</p>
               ) : (
-                <div className="prose prose-sm max-w-none prose-p:leading-relaxed prose-a:text-indigo-600">
+                <div className="prose prose-sm max-w-none prose-p:leading-relaxed prose-a:text-indigo-600 print:prose-slate print:prose-a:text-slate-900">
                   <ReactMarkdown>{msg.text}</ReactMarkdown>
                 </div>
               )}
@@ -455,7 +497,7 @@ Do not give formal legal or tax advice, but provide educational guidance based o
       </div>
 
       {/* Input Area */}
-      <div className="p-4 border-t border-slate-200 bg-white">
+      <div className="p-4 border-t border-slate-200 bg-white print:hidden">
         <div className="flex gap-3">
           <input
             type="text"
