@@ -1,9 +1,11 @@
 import React, { useRef, useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
-import { Upload, Image as ImageIcon, Trash2, AlertCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { Upload, Image as ImageIcon, Trash2, AlertCircle, Lock, Sparkles } from 'lucide-react';
 
 export default function Settings() {
   const { settings, updateSettings, loading } = useSettings();
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,6 +41,26 @@ export default function Settings() {
 
   if (loading) {
     return <div className="p-8 text-center text-slate-500">Loading settings...</div>;
+  }
+
+  if (!user?.isPremium) {
+    return (
+      <div className="max-w-4xl mx-auto py-12 px-4 text-center">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 flex flex-col items-center">
+          <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-6">
+            <Lock className="w-8 h-8" />
+          </div>
+          <h2 className="text-3xl font-bold text-slate-900 mb-4">Premium Feature</h2>
+          <p className="text-lg text-slate-600 max-w-lg mb-8">
+            Customizing your Print & Export Logo is available exclusively to Premium members. Upgrade your account to personalize your reports and sessions.
+          </p>
+          <button className="px-8 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2">
+            <Sparkles className="w-5 h-5" />
+            Upgrade to Premium
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

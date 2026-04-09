@@ -34,12 +34,12 @@ export default function Layout() {
     { path: '/debts', label: 'Debts', icon: CreditCard },
     { path: '/insurance', label: 'Insurance', icon: Shield },
     { path: '/trusts', label: 'Family Trusts & Wills', icon: Briefcase },
-    { path: '/reports', label: 'Reports', icon: FileText },
-    { path: '/data', label: 'Data Import/Export', icon: Database },
-    { path: '/share', label: 'Share Access', icon: Users },
+    { path: '/reports', label: 'Reports', icon: FileText, premium: true },
+    { path: '/data', label: 'Data Import/Export', icon: Database, premium: true },
+    { path: '/share', label: 'Share Access', icon: Users, premium: true },
     { path: '/qa', label: 'Glossary & Q&A', icon: BookOpen },
     { path: '/advisor', label: 'AI Advisor', icon: Sparkles, premium: true },
-    { path: '/settings', label: 'Settings', icon: Settings },
+    { path: '/settings', label: 'Settings', icon: Settings, premium: true },
   ];
 
   return (

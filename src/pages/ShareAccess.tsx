@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useForm } from 'react-hook-form';
-import { UserPlus, Trash2, Shield, Mail, Check, AlertCircle, Lock } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Mail, Check, AlertCircle, Lock, Sparkles } from 'lucide-react';
 import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -88,6 +88,26 @@ export default function ShareAccess() {
         <p className="text-slate-500 max-w-md mt-2">
           To share your financial records securely with family members, please sign in with your Google Account.
         </p>
+      </div>
+    );
+  }
+
+  if (!user?.isPremium) {
+    return (
+      <div className="max-w-4xl mx-auto py-12 px-4 text-center">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 flex flex-col items-center">
+          <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-6">
+            <Lock className="w-8 h-8" />
+          </div>
+          <h2 className="text-3xl font-bold text-slate-900 mb-4">Premium Feature</h2>
+          <p className="text-lg text-slate-600 max-w-lg mb-8">
+            Sharing access with family members is available exclusively to Premium members. Upgrade your account to securely share your financial records.
+          </p>
+          <button className="px-8 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2">
+            <Sparkles className="w-5 h-5" />
+            Upgrade to Premium
+          </button>
+        </div>
       </div>
     );
   }
