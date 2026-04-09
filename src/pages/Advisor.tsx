@@ -2,10 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { GoogleGenAI } from '@google/genai';
-import { Send, Bot, User, Lock, Sparkles, AlertCircle, Save, History, X, Plus, MessageSquare } from 'lucide-react';
+import { Send, Bot, User, Lock, Sparkles, AlertCircle, Save, History, X, Plus, MessageSquare, Trash2, Share2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import ReactMarkdown from 'react-markdown';
-import { collection, addDoc, getDocs, query, where, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, serverTimestamp, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 interface SavedSession {
@@ -13,6 +13,7 @@ interface SavedSession {
   name: string;
   createdAt: any;
   messages: { role: 'user' | 'model', text: string }[];
+  sharedWithEmail?: string;
 }
 
 export default function Advisor() {
@@ -32,9 +33,14 @@ export default function Advisor() {
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [sessionName, setSessionName] = useState('');
+  const [shareEmail, setShareEmail] = useState('');
+  const [sessionToShare, setSessionToShare] = useState<SavedSession | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -58,11 +64,34 @@ export default function Advisor() {
         where('userId', '==', user.uid),
         orderBy('createdAt', 'desc')
       );
-      const snapshot = await getDocs(q);
+      
+      const sharedQ = query(
+        collection(db, 'advisor_sessions'),
+        where('sharedWithEmail', '==', user.email),
+        orderBy('createdAt', 'desc')
+      );
+
+      const [snapshot, sharedSnapshot] = await Promise.all([getDocs(q), getDocs(sharedQ)]);
+      
       const sessions: SavedSession[] = [];
       snapshot.forEach(doc => {
         sessions.push({ id: doc.id, ...doc.data() } as SavedSession);
       });
+      
+      sharedSnapshot.forEach(doc => {
+        // Only add if not already in the list (in case user shared with themselves)
+        if (!sessions.find(s => s.id === doc.id)) {
+          sessions.push({ id: doc.id, ...doc.data(), isSharedWithMe: true } as SavedSession & { isSharedWithMe?: boolean });
+        }
+      });
+      
+      // Sort combined sessions by date
+      sessions.sort((a, b) => {
+        const dateA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const dateB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return dateB - dateA;
+      });
+      
       setSavedSessions(sessions);
     } catch (err) {
       console.error("Error fetching saved sessions:", err);
@@ -90,6 +119,72 @@ export default function Advisor() {
       setError("Failed to save session. Please try again.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    if (!user || !db || !window.confirm('Are you sure you want to delete this session?')) return;
+    
+    setIsDeleting(sessionId);
+    try {
+      await deleteDoc(doc(db, 'advisor_sessions', sessionId));
+      if (currentSessionId === sessionId) {
+        startNewSession();
+      }
+      await fetchSavedSessions();
+    } catch (err) {
+      console.error("Error deleting session:", err);
+      setError("Failed to delete session.");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const openShareModal = (e: React.MouseEvent, session: SavedSession) => {
+    e.stopPropagation();
+    setSessionToShare(session);
+    setShareEmail(session.sharedWithEmail || '');
+    setIsShareModalOpen(true);
+  };
+
+  const handleShareSession = async () => {
+    if (!user || !db || !sessionToShare || !shareEmail.trim()) return;
+    
+    setIsSharing(true);
+    try {
+      await updateDoc(doc(db, 'advisor_sessions', sessionToShare.id), {
+        sharedWithEmail: shareEmail.trim().toLowerCase()
+      });
+      setIsShareModalOpen(false);
+      setSessionToShare(null);
+      setShareEmail('');
+      await fetchSavedSessions();
+    } catch (err) {
+      console.error("Error sharing session:", err);
+      setError("Failed to share session. Please try again.");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleRemoveShare = async () => {
+    if (!user || !db || !sessionToShare) return;
+    
+    setIsSharing(true);
+    try {
+      await updateDoc(doc(db, 'advisor_sessions', sessionToShare.id), {
+        sharedWithEmail: null
+      });
+      setIsShareModalOpen(false);
+      setSessionToShare(null);
+      setShareEmail('');
+      await fetchSavedSessions();
+    } catch (err) {
+      console.error("Error removing share:", err);
+      setError("Failed to remove share. Please try again.");
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -228,22 +323,51 @@ Do not give formal legal or tax advice, but provide educational guidance based o
             <p className="text-center text-sm text-slate-500 py-8">No saved sessions yet.</p>
           ) : (
             savedSessions.map(session => (
-              <button
+              <div
                 key={session.id}
-                onClick={() => loadSession(session)}
                 className={cn(
-                  "w-full text-left px-4 py-3 rounded-xl flex items-start gap-3 transition-colors",
+                  "w-full text-left px-4 py-3 rounded-xl flex items-start gap-3 transition-colors group relative cursor-pointer",
                   currentSessionId === session.id ? "bg-indigo-50 text-indigo-900" : "hover:bg-slate-50 text-slate-700"
                 )}
+                onClick={() => loadSession(session)}
               >
                 <MessageSquare className={cn("w-5 h-5 mt-0.5 shrink-0", currentSessionId === session.id ? "text-indigo-600" : "text-slate-400")} />
-                <div className="overflow-hidden">
-                  <p className="font-medium truncate">{session.name}</p>
-                  <p className="text-xs text-slate-500 truncate">
-                    {session.createdAt?.toDate ? session.createdAt.toDate().toLocaleDateString() : 'Just now'}
-                  </p>
+                <div className="overflow-hidden flex-1">
+                  <p className="font-medium truncate pr-16">{session.name}</p>
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <span className="truncate">
+                      {session.createdAt?.toDate ? session.createdAt.toDate().toLocaleDateString() : 'Just now'}
+                    </span>
+                    {(session as any).isSharedWithMe && (
+                      <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded text-[10px] font-medium">Shared with me</span>
+                    )}
+                    {session.sharedWithEmail && !(session as any).isSharedWithMe && (
+                      <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] font-medium">Shared</span>
+                    )}
+                  </div>
                 </div>
-              </button>
+                
+                {/* Actions (only for owner) */}
+                {!(session as any).isSharedWithMe && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-l from-white via-white to-transparent pl-4">
+                    <button
+                      onClick={(e) => openShareModal(e, session)}
+                      className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                      title="Share session"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteSession(e, session.id)}
+                      disabled={isDeleting === session.id}
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                      title="Delete session"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
             ))
           )}
         </div>
@@ -404,6 +528,70 @@ Do not give formal legal or tax advice, but provide educational guidance based o
                 className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
               >
                 {isSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Share Modal */}
+      {isShareModalOpen && sessionToShare && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <Share2 className="w-5 h-5 text-indigo-600" />
+                Share Session
+              </h3>
+              <button onClick={() => setIsShareModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-slate-600 text-sm">
+                Share this session with your significant loved one so they can read the advice. They will need to sign in with this Google Account email address.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Google Account Email</label>
+                <input
+                  type="email"
+                  value={shareEmail}
+                  onChange={(e) => setShareEmail(e.target.value)}
+                  placeholder="loved.one@gmail.com"
+                  className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && handleShareSession()}
+                />
+              </div>
+              
+              {sessionToShare.sharedWithEmail && (
+                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-indigo-900">Currently shared with:</p>
+                    <p className="text-sm text-indigo-700">{sessionToShare.sharedWithEmail}</p>
+                  </div>
+                  <button
+                    onClick={handleRemoveShare}
+                    disabled={isSharing}
+                    className="text-xs font-medium text-red-600 hover:text-red-700 px-3 py-1.5 bg-white rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
+                  >
+                    Remove Access
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+              <button
+                onClick={() => setIsShareModalOpen(false)}
+                className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleShareSession}
+                disabled={!shareEmail.trim() || isSharing || shareEmail === sessionToShare.sharedWithEmail}
+                className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {isSharing ? 'Saving...' : 'Share Access'}
               </button>
             </div>
           </div>
