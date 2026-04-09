@@ -3,9 +3,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { GoogleGenAI } from '@google/genai';
-import { Send, Bot, User, Lock, Sparkles, AlertCircle, Save, History, X, Plus, MessageSquare, Trash2, Share2, Printer } from 'lucide-react';
+import { Send, Bot, User, Lock, Sparkles, AlertCircle, Save, History, X, Plus, MessageSquare, Trash2, Share2, Printer, FileText } from 'lucide-react';
 import { cn } from '../lib/utils';
 import ReactMarkdown from 'react-markdown';
+import { marked } from 'marked';
 import { collection, addDoc, getDocs, query, where, serverTimestamp, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -301,6 +302,67 @@ Do not give formal legal or tax advice, but provide educational guidance based o
 
   const logoUrl = settings.logoUrl || "/Copilot_NextSteps(EPS).jpg";
 
+  const handleExportWord = async () => {
+    if (!currentSessionId) return;
+    
+    const session = savedSessions.find(s => s.id === currentSessionId);
+    const sessionName = session?.name || 'Saved Session';
+    
+    let htmlContent = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset='utf-8'>
+        <title>${sessionName}</title>
+        <style>
+          body { font-family: Arial, sans-serif; }
+          .message { margin-bottom: 20px; }
+          .user { color: #4f46e5; font-weight: bold; }
+          .ai { color: #0f172a; font-weight: bold; }
+          .content { margin-top: 5px; }
+        </style>
+      </head>
+      <body>
+    `;
+
+    if (logoUrl) {
+      htmlContent += `<img src="${logoUrl}" height="60" /><br/><br/>`;
+    }
+
+    htmlContent += `
+      <h1>AI Advisor Session: ${sessionName}</h1>
+      <p>Generated for ${user?.displayName} on ${new Date().toLocaleDateString()}</p>
+      <hr />
+    `;
+
+    for (const msg of messages) {
+      const roleName = msg.role === 'user' ? 'You' : 'AI Advisor';
+      const roleClass = msg.role === 'user' ? 'user' : 'ai';
+      const parsedText = await marked.parse(msg.text);
+      
+      htmlContent += `
+        <div class="message">
+          <div class="${roleClass}">${roleName}:</div>
+          <div class="content">${parsedText}</div>
+        </div>
+      `;
+    }
+
+    htmlContent += `</body></html>`;
+
+    const blob = new Blob(['\ufeff', htmlContent], {
+      type: 'application/msword'
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${sessionName.replace(/\s+/g, '_')}_Session.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="max-w-6xl mx-auto h-[calc(100vh-8rem)] flex gap-6 print:h-auto print:block">
       {/* Sidebar for Saved Sessions */}
@@ -423,13 +485,22 @@ Do not give formal legal or tax advice, but provide educational guidance based o
           
           <div className="flex items-center gap-2">
             <button
-              onClick={handlePrint}
-              disabled={messages.length <= 1}
+              onClick={handleExportWord}
+              disabled={currentSessionId === null}
               className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
-              title="Print Session"
+              title={currentSessionId ? "Export to Word" : "Save session first to export"}
+            >
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">Word</span>
+            </button>
+            <button
+              onClick={handlePrint}
+              disabled={currentSessionId === null}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+              title={currentSessionId ? "Print / Save as PDF" : "Save session first to print"}
             >
               <Printer className="w-4 h-4" />
-              <span className="hidden sm:inline">Print</span>
+              <span className="hidden sm:inline">PDF / Print</span>
             </button>
             <button
               onClick={() => setIsSaveModalOpen(true)}
