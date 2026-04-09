@@ -3,12 +3,14 @@ import { Navigate } from 'react-router-dom';
 import { ShieldCheck, User, Users, PlayCircle, HelpCircle, FileText, Lock } from 'lucide-react';
 import { useState } from 'react';
 import HelpModal from '../components/HelpModal';
+import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import AppIcon from '../components/AppIcon';
 import heroImage from '../hero-image.jpg';
 
 export default function Login() {
   const { user, signInWithGoogle, signInAsGuest, signInAsDemo } = useAuth();
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
 
   if (user) {
     return <Navigate to="/" replace />;
@@ -134,9 +136,14 @@ export default function Login() {
       </main>
       
       {/* Footer */}
-      <footer className="bg-white border-t border-slate-100 py-8 text-center text-slate-500 text-sm">
+      <footer className="bg-white border-t border-slate-100 py-8 text-center text-slate-500 text-sm flex flex-col items-center gap-3">
+        <p className="text-slate-600">
+          By using "Next Steps", you agree to the terms outlined in this <button onClick={() => setIsPrivacyOpen(true)} className="text-indigo-600 hover:text-indigo-700 hover:underline font-medium">Privacy Policy</button>.
+        </p>
         <p>© {new Date().getFullYear()} Next Steps. All rights reserved.</p>
       </footer>
+
+      <PrivacyPolicyModal isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
     </div>
   );
 }
