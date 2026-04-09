@@ -2,12 +2,14 @@ import React, { useRef, useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Upload, Image as ImageIcon, Trash2, AlertCircle, Lock, Sparkles } from 'lucide-react';
+import PremiumModal from '../components/PremiumModal';
 
 export default function Settings() {
   const { settings, updateSettings, loading } = useSettings();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showPremiumModal, setShowPremiumModal] = useState(true);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -46,6 +48,11 @@ export default function Settings() {
   if (!user?.isPremium) {
     return (
       <div className="max-w-4xl mx-auto py-12 px-4 text-center">
+        <PremiumModal 
+          isOpen={showPremiumModal} 
+          onClose={() => setShowPremiumModal(false)} 
+          featureName="Print & Export Logo"
+        />
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 flex flex-col items-center">
           <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-6">
             <Lock className="w-8 h-8" />
@@ -54,7 +61,10 @@ export default function Settings() {
           <p className="text-lg text-slate-600 max-w-lg mb-8">
             Customizing your Print & Export Logo is available exclusively to Premium members. Upgrade your account to personalize your reports and sessions.
           </p>
-          <button className="px-8 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2">
+          <button 
+            onClick={() => setShowPremiumModal(true)}
+            className="px-8 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2"
+          >
             <Sparkles className="w-5 h-5" />
             Upgrade to Premium
           </button>

@@ -9,6 +9,7 @@ import ReactMarkdown from 'react-markdown';
 import { marked } from 'marked';
 import { collection, addDoc, getDocs, query, where, serverTimestamp, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import PremiumModal from '../components/PremiumModal';
 
 interface SavedSession {
   id: string;
@@ -44,6 +45,7 @@ export default function Advisor() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [showPremiumModal, setShowPremiumModal] = useState(true);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -215,6 +217,11 @@ export default function Advisor() {
   if (!user?.isPremium) {
     return (
       <div className="max-w-4xl mx-auto py-12 px-4 text-center">
+        <PremiumModal 
+          isOpen={showPremiumModal} 
+          onClose={() => setShowPremiumModal(false)} 
+          featureName="AI Advisor"
+        />
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 flex flex-col items-center">
           <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-6">
             <Lock className="w-8 h-8" />
@@ -223,7 +230,10 @@ export default function Advisor() {
           <p className="text-lg text-slate-600 max-w-lg mb-8">
             The AI Family Financial Advisor is available exclusively to Premium members. Upgrade your account to ask scenario-based questions and get personalized insights based on your financial data.
           </p>
-          <button className="px-8 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2">
+          <button 
+            onClick={() => setShowPremiumModal(true)}
+            className="px-8 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2"
+          >
             <Sparkles className="w-5 h-5" />
             Upgrade to Premium
           </button>

@@ -5,6 +5,7 @@ import { LogOut, LayoutDashboard, Landmark, CreditCard, Shield, Menu, X, Users, 
 import { cn } from '../lib/utils';
 import HelpModal from './HelpModal';
 import AppIcon from './AppIcon';
+import PremiumModal from './PremiumModal';
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -13,6 +14,8 @@ export default function Layout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [showChatbotWidget, setShowChatbotWidget] = useState(false);
+  const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
+  const [premiumFeatureName, setPremiumFeatureName] = useState<string | undefined>();
 
   useEffect(() => {
     // Show chatbot widget 30 seconds after mounting (logging in)
@@ -34,7 +37,7 @@ export default function Layout() {
     { path: '/debts', label: 'Debts', icon: CreditCard },
     { path: '/insurance', label: 'Insurance', icon: Shield },
     { path: '/trusts', label: 'Family Trusts & Wills', icon: Briefcase },
-    { path: '/reports', label: 'Reports', icon: FileText, premium: true },
+    { path: '/reports', label: 'Reports', icon: FileText },
     { path: '/data', label: 'Data Import/Export', icon: Database, premium: true },
     { path: '/share', label: 'Share Access', icon: Users, premium: true },
     { path: '/qa', label: 'Glossary & Q&A', icon: BookOpen },
@@ -42,9 +45,24 @@ export default function Layout() {
     { path: '/settings', label: 'Settings', icon: Settings, premium: true },
   ];
 
+  const handleNavClick = (e: React.MouseEvent, item: any) => {
+    if (item.premium && !user?.isPremium) {
+      e.preventDefault();
+      setPremiumFeatureName(item.label);
+      setIsPremiumModalOpen(true);
+    } else {
+      setIsMobileMenuOpen(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row print:bg-white print:block">
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      <PremiumModal 
+        isOpen={isPremiumModalOpen} 
+        onClose={() => setIsPremiumModalOpen(false)} 
+        featureName={premiumFeatureName}
+      />
       
       {/* Sidebar (Desktop) */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 shadow-sm print:hidden">
@@ -73,6 +91,7 @@ export default function Layout() {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={(e) => handleNavClick(e, item)}
                 className={cn(
                   "flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-colors",
                   isActive 
@@ -148,7 +167,7 @@ export default function Layout() {
                 <Link
                   key={item.path}
                   to={item.path}
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  onClick={(e) => handleNavClick(e, item)}
                   className={cn(
                     "flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg",
                     isActive 

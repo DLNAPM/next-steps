@@ -5,6 +5,7 @@ import { Download, Upload, FileJson, FileSpreadsheet, AlertCircle, Check, Lock, 
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { FinancialRecord } from '../types';
+import PremiumModal from '../components/PremiumModal';
 
 export default function DataManagement() {
   const { records, addRecord, updateRecord } = useData();
@@ -16,10 +17,11 @@ export default function DataManagement() {
     duplicates: { existing: FinancialRecord, new: any }[],
     newRecords: any[]
   } | null>(null);
+  const [showPremiumModal, setShowPremiumModal] = useState(true);
 
   const handleDownloadJson = () => {
     if (!user?.isPremium) {
-      setExportError('Download JSON is a Premium (PRO) feature. Please upgrade to use this feature.');
+      setShowPremiumModal(true);
       return;
     }
     setExportError(null);
@@ -30,7 +32,7 @@ export default function DataManagement() {
 
   const handleDownloadExcel = () => {
     if (!user?.isPremium) {
-      setExportError('Download Excel is a Premium (PRO) feature. Please upgrade to use this feature.');
+      setShowPremiumModal(true);
       return;
     }
     setExportError(null);
@@ -125,6 +127,11 @@ export default function DataManagement() {
   if (!user?.isPremium) {
     return (
       <div className="max-w-4xl mx-auto py-12 px-4 text-center">
+        <PremiumModal 
+          isOpen={showPremiumModal} 
+          onClose={() => setShowPremiumModal(false)} 
+          featureName="Data Import/Export"
+        />
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 flex flex-col items-center">
           <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-6">
             <Lock className="w-8 h-8" />
@@ -133,7 +140,10 @@ export default function DataManagement() {
           <p className="text-lg text-slate-600 max-w-lg mb-8">
             Data Import and Export is available exclusively to Premium members. Upgrade your account to backup and manage your financial records.
           </p>
-          <button className="px-8 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2">
+          <button 
+            onClick={() => setShowPremiumModal(true)}
+            className="px-8 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2"
+          >
             <Sparkles className="w-5 h-5" />
             Upgrade to Premium
           </button>

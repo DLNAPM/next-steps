@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { Printer, FileText, PieChart, Lock, AlertCircle, Upload, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import PremiumModal from '../components/PremiumModal';
 
 export default function Reports() {
   const { records } = useData();
@@ -11,10 +12,11 @@ export default function Reports() {
   const { settings } = useSettings();
   const [error, setError] = useState<string | null>(null);
   const [reportType, setReportType] = useState<'standard' | 'accounts'>('standard');
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   const handlePrint = () => {
     if (!user?.isPremium) {
-      setError('Print Report is a Premium (PRO) feature. Please upgrade to use this feature.');
+      setShowPremiumModal(true);
       return;
     }
     window.print();
@@ -43,6 +45,11 @@ export default function Reports() {
 
   return (
     <div className="space-y-8 print:space-y-4">
+      <PremiumModal 
+        isOpen={showPremiumModal} 
+        onClose={() => setShowPremiumModal(false)} 
+        featureName="Print Reports"
+      />
       <div className="flex items-center justify-between print:hidden">
         <div>
           <h2 className="text-3xl font-bold text-slate-900">Financial Report</h2>
