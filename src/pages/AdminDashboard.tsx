@@ -3,8 +3,22 @@ import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from 'fireba
 import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import { useAuth } from '../contexts/AuthContext';
-import { Shield, UserX, UserCheck, Star, Snowflake, Trash2, ShieldAlert } from 'lucide-react';
+import { Shield, UserX, UserCheck, Star, Snowflake, Trash2, ShieldAlert, Users, PieChart as PieChartIcon } from 'lucide-react';
 import { UserProfile } from '../types';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+  if (percent < 0.05) return null;
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
+  const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+
+  return (
+    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="text-xs font-bold pointer-events-none">
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
+};
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -78,6 +92,22 @@ export default function AdminDashboard() {
     );
   }
 
+  const totalUsers = users.length;
+  // If an Admin also has isPremium flag, we just count them as Admin for the distribution.
+  const adminUsersCount = users.filter(u => u.isAdmin).length;
+  const premiumUsersCount = users.filter(u => u.isPremium && !u.isAdmin).length;
+  const basicUsersCount = users.filter(u => !u.isPremium && !u.isAdmin).length;
+
+  const pieData = [
+    { name: 'Admins', value: adminUsersCount },
+    { name: 'Premium', value: premiumUsersCount },
+    { name: 'Basic', value: basicUsersCount }
+  ].filter(d => d.value > 0);
+
+  const COLORS = ['#6366f1', '#f59e0b', '#94a3b8']; // Indigo (Admin), Amber (Premium), Slate (Basic)
+
+  const getPercent = (count: number) => totalUsers > 0 ? ((count / totalUsers) * 100).toFixed(1) : '0.0';
+
   return (
     <div className="space-y-6">
       <div>
@@ -87,6 +117,84 @@ export default function AdminDashboard() {
         </h2>
         <p className="text-slate-500 mt-1">Manage users, adjust premium services, and secure accounts.</p>
       </div>
+
+      {!loading && totalUsers > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm p-6 flex flex-col justify-center items-center">
+            <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <PieChartIcon className="w-4 h-4 text-slate-500" />
+              User Distribution Graph
+            </h3>
+            <div className="w-full h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={renderCustomizedLabel}
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    dataKey="value"
+                    nameKey="name"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: any) => [value, 'Users']} />
+                  <Legend verticalAlign="bottom" height={36}/>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm p-6">
+            <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-6 flex items-center gap-2">
+              <Users className="w-4 h-4 text-slate-500" />
+              Distribution Stats
+            </h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <span className="font-medium text-slate-700">Total Users</span>
+                <div className="text-right">
+                  <div className="text-xl font-bold text-slate-900">{totalUsers}</div>
+                  <div className="text-xs text-slate-500 font-medium">100% of total users</div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/50">
+                <span className="font-medium text-indigo-900 flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-indigo-500" /> Total Admin Users
+                </span>
+                <div className="text-right">
+                  <div className="text-xl font-bold text-indigo-700">{adminUsersCount}</div>
+                  <div className="text-xs text-indigo-600/70 font-medium">{getPercent(adminUsersCount)}% of total users</div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center bg-amber-50/50 p-4 rounded-xl border border-amber-100/50">
+                <span className="font-medium text-amber-900 flex items-center gap-2">
+                  <Star className="w-4 h-4 text-amber-500" /> Total Premium Users
+                </span>
+                <div className="text-right">
+                  <div className="text-xl font-bold text-amber-700">{premiumUsersCount}</div>
+                  <div className="text-xs text-amber-600/70 font-medium">{getPercent(premiumUsersCount)}% of total users</div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-200/50">
+                <span className="font-medium text-slate-700 flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-slate-400" /> Total Basic Users
+                </span>
+                <div className="text-right">
+                  <div className="text-xl font-bold text-slate-700">{basicUsersCount}</div>
+                  <div className="text-xs text-slate-500 font-medium">{getPercent(basicUsersCount)}% of total users</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="p-4 border-b border-slate-100 bg-slate-50/50">
