@@ -2,9 +2,41 @@ import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { Printer, FileText, PieChart, Lock, AlertCircle, Upload, X } from 'lucide-react';
+import { Printer, FileText, PieChart as PieChartIcon, Lock, AlertCircle, Upload, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PremiumModal from '../components/PremiumModal';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+const parseValue = (val?: string) => {
+  if (!val) return 0;
+  const num = parseFloat(val.replace(/[^0-9.-]+/g,""));
+  return isNaN(num) ? 0 : num;
+};
+
+const getAssetValue = (record: any) => {
+  if (record.assetValue) return parseValue(record.assetValue);
+  if (record.category === 'real-estate' && record.currentValue) return parseValue(record.currentValue);
+  if (record.currentBalance) return parseValue(record.currentBalance);
+  return 0; 
+};
+
+const getDebtValue = (record: any) => {
+  if (record.currentBalance) return parseValue(record.currentBalance);
+  return 0;
+};
+
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+  if (percent < 0.05) return null;
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
+  const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+
+  return (
+    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="text-xs font-bold pointer-events-none">
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
+};
 
 export default function Reports() {
   const { records } = useData();
@@ -40,6 +72,42 @@ export default function Reports() {
     acc[cat] = (acc[cat] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  const assetPieData = Object.entries(assets.reduce((acc, curr) => {
+    const cat = (curr as any).category || 'other';
+    acc[cat] = (acc[cat] || 0) + getAssetValue(curr);
+    return acc;
+  }, {} as Record<string, number>))
+  .map(([name, value]) => ({ 
+    name: name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    value 
+  })).filter(d => d.value > 0);
+
+  const useCountsForAssets = assetPieData.length === 0;
+  // Fallback to count if values aren't inputted
+  const finalAssetPieData = !useCountsForAssets ? assetPieData : Object.entries(assetCategories).map(([name, count]) => ({
+    name: name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    value: count
+  }));
+
+  const debtPieData = Object.entries(debts.reduce((acc, curr) => {
+    const cat = (curr as any).category || 'other';
+    acc[cat] = (acc[cat] || 0) + getDebtValue(curr);
+    return acc;
+  }, {} as Record<string, number>))
+  .map(([name, value]) => ({ 
+    name: name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    value 
+  })).filter(d => d.value > 0);
+
+  const useCountsForDebts = debtPieData.length === 0;
+  const finalDebtPieData = !useCountsForDebts ? debtPieData : Object.entries(debtCategories).map(([name, count]) => ({
+    name: name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    value: count
+  }));
+
+  const ASSET_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#6366f1', '#ec4899', '#8b5cf6'];
+  const DEBT_COLORS = ['#f43f5e', '#f97316', '#eab308', '#d946ef', '#8b5cf6', '#06b6d4'];
 
   const logoUrl = settings.logoUrl || "/Copilot_NextSteps(EPS).jpg";
 
@@ -265,6 +333,91 @@ export default function Reports() {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </section>
+
+            {/* Pie Charts Section */}
+            <section className="pt-8 print:pt-4 break-inside-avoid">
+              <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <PieChartIcon className="w-5 h-5 text-indigo-600" />
+                Portfolio Breakdown
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 print:grid-cols-2">
+                {/* Assets pie chart */}
+                <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col items-center">
+                  <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4">Assets</h4>
+                  {finalAssetPieData.length > 0 ? (
+                    <div className="w-full h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={finalAssetPieData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={renderCustomizedLabel}
+                            innerRadius={60}
+                            outerRadius={100}
+                            paddingAngle={2}
+                            dataKey="value"
+                            nameKey="name"
+                          >
+                            {finalAssetPieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={ASSET_COLORS[index % ASSET_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            formatter={(value: any) => useCountsForAssets 
+                              ? [value, 'Count'] 
+                              : [new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value as number), 'Value']
+                            } 
+                          />
+                          <Legend verticalAlign="bottom" height={36}/>
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className="text-slate-500 my-auto">No asset data available.</p>
+                  )}
+                </div>
+
+                {/* Debts pie chart */}
+                <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col items-center">
+                  <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4">Liabilities & Equity</h4>
+                  {finalDebtPieData.length > 0 ? (
+                    <div className="w-full h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={finalDebtPieData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={renderCustomizedLabel}
+                            innerRadius={60}
+                            outerRadius={100}
+                            paddingAngle={2}
+                            dataKey="value"
+                            nameKey="name"
+                          >
+                            {finalDebtPieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={DEBT_COLORS[index % DEBT_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            formatter={(value: any) => useCountsForDebts 
+                              ? [value, 'Count'] 
+                              : [new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value as number), 'Value']
+                            } 
+                          />
+                          <Legend verticalAlign="bottom" height={36}/>
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className="text-slate-500 my-auto">No debt data available.</p>
+                  )}
+                </div>
               </div>
             </section>
           </div>
