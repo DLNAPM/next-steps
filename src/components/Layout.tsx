@@ -45,6 +45,10 @@ export default function Layout() {
     { path: '/settings', label: 'Settings', icon: Settings, premium: true },
   ];
 
+  if (user?.isAdmin) {
+    navItems.push({ path: '/admin', label: 'Admin Dashboard', icon: Shield, premium: false });
+  }
+
   const handleNavClick = (e: React.MouseEvent, item: any) => {
     if (item.premium && !user?.isPremium) {
       e.preventDefault();

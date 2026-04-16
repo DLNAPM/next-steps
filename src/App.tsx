@@ -13,6 +13,7 @@ import DataManagement from './pages/DataManagement';
 import QA from './pages/QA';
 import Advisor from './pages/Advisor';
 import Settings from './pages/Settings';
+import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
   return (
@@ -63,6 +64,7 @@ export default function App() {
                 <Route path="qa" element={<QA />} />
                 <Route path="advisor" element={<Advisor />} />
                 <Route path="settings" element={<Settings />} />
+                <Route path="admin" element={<AdminDashboard />} />
               </Route>
             </Routes>
           </Router>

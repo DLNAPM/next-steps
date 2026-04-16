@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged } from 'firebase/auth';
-import { auth, googleProvider, isFirebaseConfigured } from '../lib/firebase';
+import { auth, googleProvider, db, isFirebaseConfigured } from '../lib/firebase';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { UserProfile } from '../types';
 
 interface AuthContextType {
@@ -26,16 +27,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isFirebaseConfigured && auth) {
-      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
-          setUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            photoURL: firebaseUser.photoURL,
-            isGuest: false,
-            isPremium: firebaseUser.email ? PREMIUM_EMAILS.includes(firebaseUser.email.toLowerCase()) : false,
-          });
+          try {
+            // Check if user exists in Firestore
+            let userData: any = {};
+            if (db) {
+              const userRef = doc(db, 'users', firebaseUser.uid);
+              const userSnap = await getDoc(userRef);
+              
+              if (userSnap.exists()) {
+                userData = userSnap.data();
+                
+                // If frozen, we technically shouldn't let them do much, but we still log them in to show frozen state
+                // Update last login
+                await setDoc(userRef, { lastLoginAt: serverTimestamp() }, { merge: true });
+              } else {
+                // Create user
+                const isDlaniger = firebaseUser.email?.toLowerCase() === 'dlaniger.napm.consulting@gmail.com';
+                const isPremiumEmail = firebaseUser.email ? PREMIUM_EMAILS.includes(firebaseUser.email.toLowerCase()) : false;
+                
+                userData = {
+                  uid: firebaseUser.uid,
+                  email: firebaseUser.email,
+                  displayName: firebaseUser.displayName,
+                  photoURL: firebaseUser.photoURL,
+                  isPremium: isDlaniger || isPremiumEmail,
+                  isAdmin: isDlaniger,
+                  isFrozen: false,
+                  createdAt: serverTimestamp(),
+                  lastLoginAt: serverTimestamp()
+                };
+                await setDoc(userRef, userData);
+              }
+
+              // Force admin config for target user if accidentally revoked
+              if (firebaseUser.email?.toLowerCase() === 'dlaniger.napm.consulting@gmail.com') {
+                userData.isAdmin = true;
+                userData.isPremium = true;
+              }
+            } else {
+               // Fallback if db isn't available
+               userData = {
+                 isPremium: firebaseUser.email ? PREMIUM_EMAILS.includes(firebaseUser.email.toLowerCase()) : false,
+                 isAdmin: firebaseUser.email?.toLowerCase() === 'dlaniger.napm.consulting@gmail.com',
+                 isFrozen: false
+               }
+            }
+
+            setUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+              isGuest: false,
+              isPremium: userData.isPremium,
+              isAdmin: userData.isAdmin,
+              isFrozen: userData.isFrozen,
+            });
+          } catch (e) {
+            console.error("Error fetching/setting user in firestore:", e);
+            // Fallback
+            setUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+              isGuest: false,
+              isPremium: firebaseUser.email ? PREMIUM_EMAILS.includes(firebaseUser.email.toLowerCase()) : false,
+              isAdmin: firebaseUser.email?.toLowerCase() === 'dlaniger.napm.consulting@gmail.com',
+            });
+          }
         } else {
           // Only clear user if we weren't in guest or demo mode
           setUser((prev) => ((prev?.isGuest || prev?.isDemo) ? prev : null));

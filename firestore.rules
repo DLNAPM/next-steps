@@ -14,6 +14,22 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/shared_access/$(docId));
     }
 
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email != null && request.auth.token.email.lower() == 'dlaniger.napm.consulting@gmail.com';
+    }
+
+    match /users/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // Users can create/update their own base info (but not elevate admin privileges)
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && (
+        (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isPremium', 'isFrozen']))
+        || isAdmin()
+      );
+      // Only admins can delete user records
+      allow delete: if request.auth != null && isAdmin();
+    }
+
     match /records/{recordId} {
       // CREATE: Only allow creating records where the userId matches the authenticated user
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;

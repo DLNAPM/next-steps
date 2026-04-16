@@ -68,4 +68,7 @@ export interface UserProfile {
   isGuest: boolean;
   isDemo?: boolean;
   isPremium?: boolean;
+  isAdmin?: boolean;
+  isFrozen?: boolean;
 }
+
