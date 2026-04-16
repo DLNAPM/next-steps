@@ -247,6 +247,14 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
             {/* Type Specific Fields */}
             {record.type === 'asset' && (
               <>
+                {(record as AssetRecord).assetValue && (
+                  <div>
+                    <span className="font-semibold text-slate-700 block mb-1">
+                      Asset Value <span className="text-xs font-normal text-slate-400 normal-case ml-1">(value as of {new Date(record.updatedAt || record.createdAt).toLocaleDateString()})</span>
+                    </span>
+                    <span className="text-slate-600">{(record as AssetRecord).assetValue}</span>
+                  </div>
+                )}
                 {(record as AssetRecord).category === 'real-estate' && (
                   <>
                     {(record as AssetRecord).purchasePrice && (
@@ -338,6 +346,7 @@ type FormData = {
   url?: string;
   currentBalance?: string;
   startBalance?: string;
+  assetValue?: string;
   // Asset specific
   institutionName?: string;
   purchasePrice?: string;
@@ -474,6 +483,13 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
           {type === 'asset' && (
             <div className="space-y-4 pt-4 border-t border-slate-100">
                <h4 className="font-medium text-slate-900">Asset Details</h4>
+               
+               <div>
+                 <label className="block text-sm font-medium text-slate-700 mb-1">Asset Value</label>
+                 <input {...register('assetValue')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="$0.00" />
+                 <p className="text-xs text-slate-500 mt-1">Value as of today (will automatically date stamp when saved)</p>
+               </div>
+
                {category === 'real-estate' ? (
                  <>
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
