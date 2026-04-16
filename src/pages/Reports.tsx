@@ -7,9 +7,10 @@ import { Link } from 'react-router-dom';
 import PremiumModal from '../components/PremiumModal';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const parseValue = (val?: string) => {
-  if (!val) return 0;
-  const num = parseFloat(val.replace(/[^0-9.-]+/g,""));
+const parseValue = (val?: string | number) => {
+  if (val === undefined || val === null) return 0;
+  if (typeof val === 'number') return val;
+  const num = parseFloat(String(val).replace(/[^0-9.-]+/g,""));
   return isNaN(num) ? 0 : num;
 };
 
@@ -79,14 +80,14 @@ export default function Reports() {
     return acc;
   }, {} as Record<string, number>))
   .map(([name, value]) => ({ 
-    name: name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    name: String(name).replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
     value 
   })).filter(d => d.value > 0);
 
   const useCountsForAssets = assetPieData.length === 0;
   // Fallback to count if values aren't inputted
   const finalAssetPieData = !useCountsForAssets ? assetPieData : Object.entries(assetCategories).map(([name, count]) => ({
-    name: name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    name: String(name).replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
     value: count
   }));
 
@@ -96,13 +97,13 @@ export default function Reports() {
     return acc;
   }, {} as Record<string, number>))
   .map(([name, value]) => ({ 
-    name: name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    name: String(name).replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
     value 
   })).filter(d => d.value > 0);
 
   const useCountsForDebts = debtPieData.length === 0;
   const finalDebtPieData = !useCountsForDebts ? debtPieData : Object.entries(debtCategories).map(([name, count]) => ({
-    name: name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    name: String(name).replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
     value: count
   }));
 
@@ -241,7 +242,7 @@ export default function Reports() {
                       assets.map((record) => (
                         <tr key={record.id} className="break-inside-avoid">
                           <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{record.name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{(record as any).category?.replace(/-/g, ' ')}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{typeof (record as any).category === 'string' ? (record as any).category.replace(/-/g, ' ') : String((record as any).category || 'other').replace(/-/g, ' ')}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                             {(record as any).category === 'real-estate' ? (record as any).currentValue || '-' : (record as any).currentBalance || '-'}
                           </td>
@@ -282,7 +283,7 @@ export default function Reports() {
                       debts.map((record) => (
                         <tr key={record.id} className="break-inside-avoid">
                           <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{record.name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{(record as any).category?.replace(/-/g, ' ')}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{typeof (record as any).category === 'string' ? (record as any).category.replace(/-/g, ' ') : String((record as any).category || 'other').replace(/-/g, ' ')}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                             <div>{(record as any).currentBalance || '-'}</div>
                             {(record as any).startBalance && <div className="text-xs text-slate-400">Start: {(record as any).startBalance}</div>}
