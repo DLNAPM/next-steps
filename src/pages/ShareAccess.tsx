@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { UserPlus, Trash2, Shield, Mail, Check, AlertCircle, Lock, Sparkles } from 'lucide-react';
 import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import PremiumModal from '../components/PremiumModal';
 
 interface SharedUser {
@@ -32,6 +33,8 @@ export default function ShareAccess() {
         users.push(doc.data() as SharedUser);
       });
       setSharedUsers(users);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'shared_access');
     });
 
     return () => unsubscribe();
@@ -60,7 +63,7 @@ export default function ShareAccess() {
       });
       reset();
     } catch (err) {
-      console.error("Error sharing access:", err);
+      handleFirestoreError(err, OperationType.CREATE, 'shared_access');
       setError("Failed to share access. Please try again.");
     } finally {
       setLoading(false);
@@ -75,7 +78,7 @@ export default function ShareAccess() {
       const docId = `${user.uid}_${email}`;
       await deleteDoc(doc(db, 'shared_access', docId));
     } catch (err) {
-      console.error("Error removing user:", err);
+      handleFirestoreError(err, OperationType.DELETE, 'shared_access');
       alert("Failed to remove user.");
     }
   };

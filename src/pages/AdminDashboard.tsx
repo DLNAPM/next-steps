@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import { useAuth } from '../contexts/AuthContext';
 import { Shield, UserX, UserCheck, Star, Snowflake, Trash2, ShieldAlert } from 'lucide-react';
 import { UserProfile } from '../types';
@@ -21,6 +22,8 @@ export default function AdminDashboard() {
       })) as UserProfile[];
       setUsers(usersData);
       setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'users');
     });
 
     return () => unsubscribe();
@@ -33,8 +36,7 @@ export default function AdminDashboard() {
         isPremium: !currentPremium
       });
     } catch (e) {
-      console.error('Error toggling premium:', e);
-      alert('Failed to update user status.');
+      handleFirestoreError(e, OperationType.UPDATE, `users/${targetUserId}`);
     }
   };
 
@@ -45,8 +47,7 @@ export default function AdminDashboard() {
         isFrozen: !currentFrozen
       });
     } catch (e) {
-      console.error('Error freezing user:', e);
-      alert('Failed to update user freeze status.');
+      handleFirestoreError(e, OperationType.UPDATE, `users/${targetUserId}`);
     }
   };
 
@@ -63,8 +64,7 @@ export default function AdminDashboard() {
       // A more robust backend is needed to delete Firebase auth, but this prevents login if handled via freeze/deleted fields.
       await deleteDoc(doc(db, 'users', targetUserId));
     } catch (e) {
-      console.error('Error deleting user:', e);
-      alert('Failed to delete user.');
+      handleFirestoreError(e, OperationType.DELETE, `users/${targetUserId}`);
     }
   };
 

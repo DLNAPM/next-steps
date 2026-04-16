@@ -12,6 +12,7 @@ import {
   getDocs
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import { useAuth } from './AuthContext';
 import { FinancialRecord } from '../types';
 import { v4 as uuidv4 } from 'uuid';
@@ -96,6 +97,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const unsubMy = onSnapshot(qMy, (snap) => {
       myRecords = snap.docs.map(mapDocToRecord);
       updateAllRecords();
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'records');
     });
     unsubscribes.push(unsubMy);
 
@@ -112,9 +115,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
              const ownerRecords = ownerSnap.docs.map(mapDocToRecord);
              sharedRecordsMap[ownerId] = ownerRecords;
              updateAllRecords();
+           }, (error) => {
+             handleFirestoreError(error, OperationType.LIST, `records`);
            });
            unsubscribes.push(unsubOwner);
         });
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'shared_access');
       });
       unsubscribes.push(unsubShared);
     }
@@ -143,11 +150,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const guestRecord = { ...newRecord, id: uuidv4() } as FinancialRecord;
       setRecords(prev => [...prev, guestRecord]);
     } else if (db) {
-      await addDoc(collection(db, 'records'), {
-        ...newRecord,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+      try {
+        await addDoc(collection(db, 'records'), {
+          ...newRecord,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        handleFirestoreError(e, OperationType.CREATE, 'records');
+      }
     }
   };
 
@@ -163,10 +174,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setRecords(prev => prev.map(r => r.id === id ? { ...r, ...cleanRecordData, updatedAt: Date.now() } : r));
     } else if (db) {
       const recordRef = doc(db, 'records', id);
-      await updateDoc(recordRef, {
-        ...cleanRecordData,
-        updatedAt: serverTimestamp(),
-      });
+      try {
+        await updateDoc(recordRef, {
+          ...cleanRecordData,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        handleFirestoreError(e, OperationType.UPDATE, `records/${id}`);
+      }
     }
   };
 
@@ -176,7 +191,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (user.isGuest || user.isDemo) {
       setRecords(prev => prev.filter(r => r.id !== id));
     } else if (db) {
-      await deleteDoc(doc(db, 'records', id));
+      try {
+        await deleteDoc(doc(db, 'records', id));
+      } catch (e) {
+        handleFirestoreError(e, OperationType.DELETE, `records/${id}`);
+      }
     }
   };
 

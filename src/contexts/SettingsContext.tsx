@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import { useAuth } from './AuthContext';
 
 interface UserSettings {
@@ -34,6 +35,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setSettings({});
       }
       setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `user_settings/${user.uid}`);
     });
 
     return () => unsub();
@@ -46,8 +49,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const settingsRef = doc(db, 'user_settings', user.uid);
-    await setDoc(settingsRef, newSettings, { merge: true });
+    try {
+      const settingsRef = doc(db, 'user_settings', user.uid);
+      await setDoc(settingsRef, newSettings, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `user_settings/${user.uid}`);
+    }
   };
 
   return (
