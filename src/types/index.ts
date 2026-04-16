@@ -1,6 +1,6 @@
 export type RecordType = 'asset' | 'debt' | 'insurance' | 'trust';
 
-export type AssetCategory = 'bank' | 'real-estate' | 'investment' | 'pension' | 'other';
+export type AssetCategory = 'bank' | 'real-estate' | 'investment' | 'pension' | 'car-boat-motorcycle' | 'other';
 export type DebtCategory = 'mortgage' | 'credit-card' | 'loan' | 'llc' | 'other';
 export type TrustType = 'revocable' | 'irrevocable' | 'will';
 
@@ -25,6 +25,7 @@ export interface AssetRecord extends BaseRecord {
   // Specific fields
   deedUrl?: string; // Real estate
   countyClerkUrl?: string; // Real estate
+  autoCheckUrl?: string; // Car/Boat/Motorcycle
 }
 
 export interface DebtRecord extends BaseRecord {

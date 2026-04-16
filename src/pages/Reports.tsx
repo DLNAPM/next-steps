@@ -119,7 +119,7 @@ export default function Reports() {
               <div className="mt-4 space-y-1">
                 {Object.entries(assetCategories).map(([cat, count]) => (
                   <div key={cat} className="flex justify-between text-sm">
-                    <span className="capitalize text-slate-600">{cat.replace('-', ' ')}</span>
+                    <span className="capitalize text-slate-600">{cat.replace(/-/g, ' ')}</span>
                     <span className="font-medium text-slate-900">{count}</span>
                   </div>
                 ))}
@@ -132,7 +132,7 @@ export default function Reports() {
               <div className="mt-4 space-y-1">
                 {Object.entries(debtCategories).map(([cat, count]) => (
                   <div key={cat} className="flex justify-between text-sm">
-                    <span className="capitalize text-slate-600">{cat.replace('-', ' ')}</span>
+                    <span className="capitalize text-slate-600">{cat.replace(/-/g, ' ')}</span>
                     <span className="font-medium text-slate-900">{count}</span>
                   </div>
                 ))}
@@ -173,7 +173,7 @@ export default function Reports() {
                       assets.map((record) => (
                         <tr key={record.id} className="break-inside-avoid">
                           <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{record.name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{(record as any).category?.replace('-', ' ')}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{(record as any).category?.replace(/-/g, ' ')}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                             {(record as any).category === 'real-estate' ? (record as any).currentValue || '-' : (record as any).currentBalance || '-'}
                           </td>
@@ -214,7 +214,7 @@ export default function Reports() {
                       debts.map((record) => (
                         <tr key={record.id} className="break-inside-avoid">
                           <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{record.name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{(record as any).category?.replace('-', ' ')}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{(record as any).category?.replace(/-/g, ' ')}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                             <div>{(record as any).currentBalance || '-'}</div>
                             {(record as any).startBalance && <div className="text-xs text-slate-400">Start: {(record as any).startBalance}</div>}

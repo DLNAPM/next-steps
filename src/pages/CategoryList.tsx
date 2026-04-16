@@ -263,6 +263,12 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
                     )}
                   </>
                 )}
+                {(record as AssetRecord).category === 'car-boat-motorcycle' && (record as AssetRecord).autoCheckUrl && (
+                  <div>
+                     <span className="font-semibold text-slate-700 block mb-1">AutoCheck URL</span>
+                     <a href={(record as AssetRecord).autoCheckUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1">View AutoCheck <ExternalLink className="w-3 h-3" /></a>
+                  </div>
+                )}
                 {(record as AssetRecord).institutionName && (
                   <div>
                     <span className="font-semibold text-slate-700 block mb-1">Institution</span>
@@ -338,6 +344,7 @@ type FormData = {
   currentValue?: string;
   deedUrl?: string;
   countyClerkUrl?: string;
+  autoCheckUrl?: string;
   // Debt specific
   controlNumber?: string;
   stateUrl?: string;
@@ -404,6 +411,7 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
                       <option value="real-estate">Real Estate</option>
                       <option value="investment">Investment (401k, IRA, Stocks)</option>
                       <option value="pension">Pension</option>
+                      <option value="car-boat-motorcycle">Car\Boat\Motorcycle</option>
                       <option value="other">Other</option>
                     </>
                   ) : (
@@ -489,6 +497,17 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
                      </div>
                    </div>
                  </>
+               ) : category === 'car-boat-motorcycle' ? (
+                 <div className="space-y-4">
+                   <div>
+                     <label className="block text-sm font-medium text-slate-700 mb-1">Institution Name</label>
+                     <input {...register('institutionName')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                   </div>
+                   <div>
+                     <label className="block text-sm font-medium text-slate-700 mb-1">AutoCheck URL</label>
+                     <input {...register('autoCheckUrl')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="https://..." />
+                   </div>
+                 </div>
                ) : (
                  <div>
                    <label className="block text-sm font-medium text-slate-700 mb-1">Institution Name</label>
