@@ -2,9 +2,15 @@ import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useForm } from 'react-hook-form';
 import { FinancialRecord, AssetRecord, DebtRecord, InsuranceRecord, TrustRecord, RecordType } from '../types';
-import { Plus, Trash2, ExternalLink, Edit2, X, ChevronDown, ChevronUp, Briefcase, HelpCircle, ArrowRightLeft } from 'lucide-react';
+import { Plus, Trash2, ExternalLink, Edit2, X, ChevronDown, ChevronUp, Briefcase, HelpCircle, ArrowRightLeft, CreditCard, TrendingDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+
+const parseCurrency = (val: string | undefined): number => {
+  if (!val) return 0;
+  return parseFloat(val.replace(/[$,]/g, '')) || 0;
+};
 
 const getTooltipContent = (tab: 'personal' | 'business', type: RecordType) => {
   if (type === 'business') {
@@ -157,6 +163,139 @@ export default function CategoryList({ type, title, description }: CategoryListP
           ))
         )}
       </div>
+
+      {type === 'debt' && filteredRecords.length > 0 && (
+        <div className="mt-12 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="border-t border-slate-200 pt-8">
+            <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <TrendingDown className="w-5 h-5 text-indigo-600" />
+              {activeTab === 'personal' ? 'Personal' : 'Business'} Debt Analysis
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              {(() => {
+                const totalDebt = filteredRecords.reduce((sum, r) => sum + parseCurrency((r as DebtRecord).currentBalance), 0);
+                const totalLimit = filteredRecords.reduce((sum, r) => sum + parseCurrency((r as DebtRecord).creditLimit), 0);
+                const utilization = totalLimit > 0 ? (totalDebt / totalLimit) * 100 : 0;
+                
+                const chartData = [
+                  { name: 'Used', value: totalDebt, color: '#e11d48' }, // rose-600
+                  { name: 'Available', value: Math.max(0, totalLimit - totalDebt), color: '#10b981' } // emerald-500
+                ].filter(d => d.value > 0);
+
+                const barData = [
+                  { name: 'Debt', value: totalDebt },
+                  { name: 'Limit', value: totalLimit }
+                ];
+
+                return (
+                  <>
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                      <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Debt</p>
+                      <p className="text-3xl font-black text-rose-600">
+                        ${totalDebt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                      <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Credit Limit</p>
+                      <p className="text-3xl font-black text-slate-900">
+                        ${totalLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                      <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">Credit Utilization</p>
+                      <div className="flex items-end gap-2">
+                        <p className={cn(
+                          "text-3xl font-black",
+                          utilization > 75 ? "text-rose-600" : utilization > 30 ? "text-amber-500" : "text-emerald-600"
+                        )}>
+                          {utilization.toFixed(1)}%
+                        </p>
+                        <div className="flex-1 h-2 bg-slate-100 rounded-full mb-1.5 overflow-hidden">
+                          <div 
+                            className={cn(
+                              "h-full transition-all duration-1000",
+                              utilization > 75 ? "bg-rose-600" : utilization > 30 ? "bg-amber-500" : "bg-emerald-600"
+                            )}
+                            style={{ width: `${Math.min(utilization, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                      <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-6">Debt vs. Credit Limit</p>
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={barData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 500, fill: '#64748b' }} />
+                            <YAxis 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fontSize: 10, fill: '#94a3b8' }}
+                              tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                            />
+                            <Tooltip 
+                              cursor={{ fill: '#f8fafc' }}
+                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                              formatter={(value: any) => [`$${value.toLocaleString()}`, 'Amount']}
+                            />
+                            <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={60}>
+                              {barData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={index === 0 ? '#e11d48' : '#6366f1'} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center items-center">
+                      <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-6 self-start">Limit Utilization</p>
+                      <div className="h-[250px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={chartData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={80}
+                              paddingAngle={5}
+                              dataKey="value"
+                            >
+                              {chartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                              formatter={(value: any) => [`$${value.toLocaleString()}`, 'Amount']}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="flex gap-4 mt-2">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded-full bg-rose-600" />
+                          <span className="text-xs font-medium text-slate-600 text-nowrap">Debt</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                          <span className="text-xs font-medium text-slate-600 text-nowrap">Available</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {isModalOpen && (
         <RecordFormModal
