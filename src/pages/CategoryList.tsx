@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useForm } from 'react-hook-form';
 import { FinancialRecord, AssetRecord, DebtRecord, InsuranceRecord, TrustRecord, RecordType } from '../types';
-import { Plus, Trash2, ExternalLink, Edit2, X, ChevronDown, ChevronUp, Briefcase, HelpCircle } from 'lucide-react';
+import { Plus, Trash2, ExternalLink, Edit2, X, ChevronDown, ChevronUp, Briefcase, HelpCircle, ArrowRightLeft } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 
@@ -230,7 +230,7 @@ export default function CategoryList({ type, title, description }: CategoryListP
 
 const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDelete: () => void }> = ({ record, onEdit, onDelete }) => {
   const [expanded, setExpanded] = useState(false);
-  const { isSharedRecord, records } = useData();
+  const { isSharedRecord, records, updateRecord } = useData();
   const isShared = isSharedRecord(record);
 
   const associatedBusiness = record.associatedBusinessId 
@@ -272,7 +272,19 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <button 
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              if (confirm(`Move this record to ${record.isBusiness ? 'Personal' : 'Business'}?`)) {
+                updateRecord(record.id, { isBusiness: !record.isBusiness });
+              }
+            }} 
+            className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg"
+            title={record.isBusiness ? "Move to Personal" : "Move to Business"}
+          >
+            <ArrowRightLeft className="w-4 h-4" />
+          </button>
           <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg">
             <Edit2 className="w-4 h-4" />
           </button>
