@@ -162,6 +162,7 @@ export default function CategoryList({ type, title, description }: CategoryListP
         <RecordFormModal
           type={type}
           initialData={editingRecord}
+          defaultIsBusiness={activeTab === 'business'}
           onClose={() => setIsModalOpen(false)}
           onSubmit={async (data) => {
             // Remove undefined fields to prevent Firebase errors
@@ -504,11 +505,12 @@ type FormData = {
   ownerDetails?: string;
 };
 
-function RecordFormModal({ type, initialData, onClose, onSubmit }: { 
+function RecordFormModal({ type, initialData, onClose, onSubmit, defaultIsBusiness = false }: { 
   type: RecordType; 
   initialData: FinancialRecord | null; 
   onClose: () => void; 
   onSubmit: (data: any) => void;
+  defaultIsBusiness?: boolean;
 }) {
   const { records } = useData();
   const businessEntities = records
@@ -525,7 +527,7 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
       startBalance: '',
       purchasePrice: '',
       currentValue: '',
-      isBusiness: false,
+      isBusiness: defaultIsBusiness,
       associatedBusinessId: '',
       category: type === 'asset' ? 'bank' : type === 'debt' ? 'mortgage' : type === 'business' ? 'llc' : undefined,
       trustType: type === 'trust' ? 'revocable' : undefined,
