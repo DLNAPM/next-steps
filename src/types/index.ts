@@ -39,6 +39,7 @@ export interface DebtRecord extends BaseRecord {
   url?: string;
   lenderName?: string;
   currentBalance?: string; // New field
+  creditLimit?: string; // New field
   startBalance?: string; // New field for specific categories
   controlNumber?: string; // LLC
   stateUrl?: string; // LLC

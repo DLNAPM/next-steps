@@ -299,13 +299,14 @@ export default function Reports() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Category</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Balance</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Credit Limit</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Details</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Notes</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-200">
                     {debts.length === 0 ? (
-                      <tr><td colSpan={5} className="px-6 py-4 text-center text-slate-500">No debts recorded.</td></tr>
+                      <tr><td colSpan={6} className="px-6 py-4 text-center text-slate-500">No debts recorded.</td></tr>
                     ) : (
                       debts.map((record) => (
                         <tr key={record.id} className="break-inside-avoid">
@@ -326,6 +327,9 @@ export default function Reports() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                             <div>{(record as any).currentBalance || '-'}</div>
                             {(record as any).startBalance && <div className="text-xs text-slate-400">Start: {(record as any).startBalance}</div>}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                            {(record as any).creditLimit || '-'}
                           </td>
                           <td className="px-6 py-4 text-sm text-slate-500">
                             {(record as any).lenderName && <div className="font-medium">{(record as any).lenderName}</div>}

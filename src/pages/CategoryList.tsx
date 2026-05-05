@@ -316,6 +316,13 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
                 </div>
               )}
 
+              {record.type === 'debt' && (record as DebtRecord).creditLimit && (
+                <div>
+                  <span className="font-semibold text-slate-700 block mb-1">Total Credit Limit</span>
+                  <span className="text-slate-600">{(record as DebtRecord).creditLimit}</span>
+                </div>
+              )}
+
               {record.type === 'asset' && (record as any).category !== 'real-estate' && (record as any).currentBalance && (
                 <div>
                   <span className="font-semibold text-slate-700 block mb-1">Current Balance</span>
@@ -475,6 +482,7 @@ type FormData = {
   accountNumber?: string;
   url?: string;
   currentBalance?: string;
+  creditLimit?: string;
   startBalance?: string;
   assetValue?: string;
   // Asset specific
@@ -524,6 +532,7 @@ function RecordFormModal({ type, initialData, onClose, onSubmit, defaultIsBusine
       accountNumber: '',
       url: '',
       currentBalance: '',
+      creditLimit: '',
       startBalance: '',
       purchasePrice: '',
       currentValue: '',
@@ -660,6 +669,12 @@ function RecordFormModal({ type, initialData, onClose, onSubmit, defaultIsBusine
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Current Balance</label>
                     <input {...register('currentBalance')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="$0.00" />
+                  </div>
+                )}
+                {type === 'debt' && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Total Credit Limit</label>
+                    <input {...register('creditLimit')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="$0.00" />
                   </div>
                 )}
                 {type === 'debt' && (category === 'mortgage' || category === 'loan' || category === 'other') && (
