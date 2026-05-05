@@ -59,8 +59,9 @@ export default function Reports() {
   const debts = records.filter(r => r.type === 'debt');
   const insurance = records.filter(r => r.type === 'insurance');
   const trusts = records.filter(r => r.type === 'trust');
+  const businessEntities = records.filter(r => r.type === 'business');
 
-  const allAccounts = [...assets, ...debts, ...insurance, ...trusts];
+  const allAccounts = [...assets, ...debts, ...insurance, ...trusts, ...businessEntities];
 
   const assetCategories = assets.reduce((acc, curr) => {
     const cat = (curr as any).category || 'other';
@@ -215,6 +216,14 @@ export default function Reports() {
                 <p>Ensure beneficiaries are up to date on all policies.</p>
               </div>
             </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 print:border print:shadow-none">
+              <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-2">Business Entities</h3>
+              <p className="text-3xl font-bold text-orange-600">{businessEntities.length}</p>
+              <div className="mt-4 text-sm text-slate-600">
+                <p>Track LLCs, Corporations, and partnerships.</p>
+              </div>
+            </div>
           </div>
 
           {/* Detailed Lists */}
@@ -241,7 +250,12 @@ export default function Reports() {
                     ) : (
                       assets.map((record) => (
                         <tr key={record.id} className="break-inside-avoid">
-                          <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{record.name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">
+                            <div className="flex items-center gap-1">
+                              {record.name}
+                              {record.isBusiness && <span className="text-[8px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded border border-slate-200 font-bold uppercase tracking-widest">Business</span>}
+                            </div>
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{typeof (record as any).category === 'string' ? (record as any).category.replace(/-/g, ' ') : String((record as any).category || 'other').replace(/-/g, ' ')}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                             {(record as any).category === 'real-estate' ? (record as any).currentValue || '-' : (record as any).currentBalance || '-'}
@@ -282,7 +296,12 @@ export default function Reports() {
                     ) : (
                       debts.map((record) => (
                         <tr key={record.id} className="break-inside-avoid">
-                          <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{record.name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">
+                            <div className="flex items-center gap-1">
+                              {record.name}
+                              {record.isBusiness && <span className="text-[8px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded border border-slate-200 font-bold uppercase tracking-widest">Business</span>}
+                            </div>
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{typeof (record as any).category === 'string' ? (record as any).category.replace(/-/g, ' ') : String((record as any).category || 'other').replace(/-/g, ' ')}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                             <div>{(record as any).currentBalance || '-'}</div>
@@ -322,13 +341,59 @@ export default function Reports() {
                     ) : (
                       insurance.map((record) => (
                         <tr key={record.id} className="break-inside-avoid">
-                          <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{record.name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">
+                            <div className="flex items-center gap-1">
+                              {record.name}
+                              {record.isBusiness && <span className="text-[8px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded border border-slate-200 font-bold uppercase tracking-widest">Business</span>}
+                            </div>
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{(record as any).companyName}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{(record as any).amount}</td>
                           <td className="px-6 py-4 text-sm text-slate-500">
                             {(record as any).representativeName && <div className="font-medium">{(record as any).representativeName}</div>}
                             {(record as any).representativeContact && <div>{(record as any).representativeContact}</div>}
                           </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section>
+              <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-orange-600" />
+                Business Entities Detail
+              </h3>
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden print:border-slate-300">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="bg-slate-50 print:bg-slate-100">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Entity Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Category</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Formation</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Details</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-200">
+                    {businessEntities.length === 0 ? (
+                      <tr><td colSpan={5} className="px-6 py-4 text-center text-slate-500">No business entities recorded.</td></tr>
+                    ) : (
+                      businessEntities.map((record) => (
+                        <tr key={record.id} className="break-inside-avoid">
+                          <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{record.name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{String((record as any).category || 'other')}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                            {(record as any).stateOfFormation && <div>State: {(record as any).stateOfFormation}</div>}
+                            {(record as any).formationDate && <div>Date: {(record as any).formationDate}</div>}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-500">
+                            {(record as any).ein && <div className="font-medium">EIN: {(record as any).ein}</div>}
+                            {(record as any).taxId && <div>Tax ID: {(record as any).taxId}</div>}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-500 max-w-xs truncate print:whitespace-normal">{record.notes || '-'}</td>
                         </tr>
                       ))
                     )}
@@ -470,8 +535,9 @@ export default function Reports() {
                   <tr><td colSpan={5} className="px-6 py-4 text-center text-slate-500">No accounts recorded.</td></tr>
                 ) : (
                   allAccounts.map((record) => {
-                    const typeDisplay = record.type === 'trust' ? 'Trust / Will' : record.type;
-                    const acctDisplay = (record as any).accountNumber || '-';
+                    const typeDisplay = (record.isBusiness ? 'Business ' : '') + 
+                      (record.type === 'trust' ? 'Trust / Will' : record.type.charAt(0).toUpperCase() + record.type.slice(1));
+                    const acctDisplay = (record as any).accountNumber || (record as any).ein || (record as any).taxId || '-';
                     const rowLength = (record.name?.length || 0) + typeDisplay.length + acctDisplay.length;
                     const wrapClass = rowLength > 60 ? 'whitespace-normal break-words' : 'whitespace-nowrap';
 

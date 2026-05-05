@@ -1,7 +1,8 @@
-export type RecordType = 'asset' | 'debt' | 'insurance' | 'trust';
+export type RecordType = 'asset' | 'debt' | 'insurance' | 'trust' | 'business';
 
 export type AssetCategory = 'bank' | 'real-estate' | 'investment' | 'pension' | 'car-boat-motorcycle' | 'other';
 export type DebtCategory = 'mortgage' | 'credit-card' | 'loan' | 'llc' | 'other';
+export type BusinessCategory = 'llc' | 'corporation' | 'partnership' | 'sole-proprietorship' | 'other';
 export type TrustType = 'revocable' | 'irrevocable' | 'will';
 
 export interface BaseRecord {
@@ -11,6 +12,7 @@ export interface BaseRecord {
   notes?: string;
   createdAt: number;
   updatedAt: number;
+  isBusiness?: boolean;
 }
 
 export interface AssetRecord extends BaseRecord {
@@ -58,7 +60,18 @@ export interface TrustRecord extends BaseRecord {
   url?: string;
 }
 
-export type FinancialRecord = AssetRecord | DebtRecord | InsuranceRecord | TrustRecord;
+export interface BusinessRecord extends BaseRecord {
+  type: 'business';
+  category: BusinessCategory;
+  ein?: string;
+  formationDate?: string;
+  stateOfFormation?: string;
+  url?: string;
+  ownerDetails?: string;
+  taxId?: string;
+}
+
+export type FinancialRecord = AssetRecord | DebtRecord | InsuranceRecord | TrustRecord | BusinessRecord;
 
 export interface UserProfile {
   uid: string;

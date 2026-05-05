@@ -58,6 +58,13 @@ export default function App() {
                     description="Manage revocable and irrevocable trusts, wills, and trustee/executor details." 
                   />
                 } />
+                <Route path="business" element={
+                  <CategoryList 
+                    type="business" 
+                    title="Business Entities" 
+                    description="Capture details for your LLCs, Corporations, and other business entities." 
+                  />
+                } />
                 <Route path="reports" element={<Reports />} />
                 <Route path="data" element={<DataManagement />} />
                 <Route path="share" element={<ShareAccess />} />

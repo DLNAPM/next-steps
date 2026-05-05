@@ -256,7 +256,12 @@ export default function DataManagement() {
               <tr>
                 <td className="px-4 py-2 font-mono text-indigo-600">type</td>
                 <td className="px-4 py-2 font-semibold">Yes</td>
-                <td className="px-4 py-2">'asset', 'debt', 'insurance'</td>
+                <td className="px-4 py-2">'asset', 'debt', 'insurance', 'trust', 'business'</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-2 font-mono text-indigo-600">isBusiness</td>
+                <td className="px-4 py-2">No</td>
+                <td className="px-4 py-2">True if this is a business record (Assets/Debts/Insurance)</td>
               </tr>
               <tr>
                 <td className="px-4 py-2 font-mono text-indigo-600">name</td>
@@ -268,7 +273,8 @@ export default function DataManagement() {
                 <td className="px-4 py-2">No</td>
                 <td className="px-4 py-2">
                   Asset: 'bank', 'real-estate', 'investment', 'pension'<br/>
-                  Debt: 'mortgage', 'credit-card', 'loan', 'llc'
+                  Debt: 'mortgage', 'credit-card', 'loan', 'llc'<br/>
+                  Business: 'llc', 'corporation', 'partnership'
                 </td>
               </tr>
               <tr>

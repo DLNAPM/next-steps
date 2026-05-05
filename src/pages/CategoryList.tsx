@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useForm } from 'react-hook-form';
-import { FinancialRecord, AssetRecord, DebtRecord, InsuranceRecord, TrustRecord } from '../types';
-import { Plus, Trash2, ExternalLink, Edit2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { FinancialRecord, AssetRecord, DebtRecord, InsuranceRecord, TrustRecord, RecordType } from '../types';
+import { Plus, Trash2, ExternalLink, Edit2, X, ChevronDown, ChevronUp, Briefcase } from 'lucide-react';
 import { cn } from '../lib/utils';
-
-type RecordType = 'asset' | 'debt' | 'insurance' | 'trust';
 
 interface CategoryListProps {
   type: RecordType;
@@ -22,8 +20,9 @@ export default function CategoryList({ type, title, description }: CategoryListP
     newData: any,
     editingRecordId?: string
   } | null>(null);
+  const [activeTab, setActiveTab] = useState<'personal' | 'business'>('personal');
 
-  const filteredRecords = records.filter(r => r.type === type);
+  const filteredRecords = records.filter(r => r.type === type && (activeTab === 'business' ? r.isBusiness : !r.isBusiness));
 
   const openAddModal = () => {
     setEditingRecord(null);
@@ -53,7 +52,28 @@ export default function CategoryList({ type, title, description }: CategoryListP
           className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors shadow-sm"
         >
           <Plus className="w-5 h-5" />
-          Add {type === 'asset' ? 'Asset' : type === 'debt' ? 'Debt' : type === 'insurance' ? 'Policy' : 'Trust/Will'}
+          Add {type === 'asset' ? 'Asset' : type === 'debt' ? 'Debt' : type === 'insurance' ? 'Policy' : type === 'business' ? 'Entity' : 'Trust/Will'}
+        </button>
+      </div>
+
+      <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
+        <button
+          onClick={() => setActiveTab('personal')}
+          className={cn(
+            "px-6 py-2 rounded-lg text-sm font-semibold transition-all",
+            activeTab === 'personal' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 font-medium"
+          )}
+        >
+          Personal
+        </button>
+        <button
+          onClick={() => setActiveTab('business')}
+          className={cn(
+            "px-6 py-2 rounded-lg text-sm font-semibold transition-all",
+            activeTab === 'business' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 font-medium"
+          )}
+        >
+          Business
         </button>
       </div>
 
@@ -171,6 +191,7 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
             record.type === 'asset' ? "bg-emerald-100 text-emerald-700" :
             record.type === 'debt' ? "bg-rose-100 text-rose-700" :
             record.type === 'trust' ? "bg-purple-100 text-purple-700" :
+            record.type === 'business' ? "bg-orange-100 text-orange-700" :
             "bg-blue-100 text-blue-700"
           )}>
             {record.name[0].toUpperCase()}
@@ -179,10 +200,12 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-slate-900">{record.name}</h3>
               {isShared && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Shared</span>}
+              {record.isBusiness && <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Business</span>}
             </div>
             <p className="text-sm text-slate-500">
               {/* Show a key detail based on type */}
               {record.type === 'trust' ? ((record as TrustRecord).trustType ? `Type: ${String((record as TrustRecord).trustType).charAt(0).toUpperCase() + String((record as TrustRecord).trustType).slice(1)}` : 'Trust / Will') :
+              record.type === 'business' ? `Business: ${String((record as any).category).toUpperCase()}` :
               (record as any).accountNumber ? `Acct: ••••${(record as any).accountNumber.slice(-4)}` : 'No Account #'}
               {record.type === 'insurance' && (record as InsuranceRecord).amount && ` • ${(record as InsuranceRecord).amount}`}
               {(record as any).currentBalance && ` • ${(record as any).currentBalance}`}
@@ -331,6 +354,41 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
                 )}
               </>
             )}
+
+            {record.type === 'business' && (
+              <>
+                {(record as any).ein && (
+                  <div>
+                    <span className="font-semibold text-slate-700 block mb-1">EIN</span>
+                    <span className="text-slate-600">{(record as any).ein}</span>
+                  </div>
+                )}
+                {(record as any).taxId && (
+                  <div>
+                    <span className="font-semibold text-slate-700 block mb-1">Tax ID</span>
+                    <span className="text-slate-600">{(record as any).taxId}</span>
+                  </div>
+                )}
+                {(record as any).stateOfFormation && (
+                  <div>
+                    <span className="font-semibold text-slate-700 block mb-1">State of Formation</span>
+                    <span className="text-slate-600">{(record as any).stateOfFormation}</span>
+                  </div>
+                )}
+                {(record as any).formationDate && (
+                  <div>
+                    <span className="font-semibold text-slate-700 block mb-1">Formation Date</span>
+                    <span className="text-slate-600">{(record as any).formationDate}</span>
+                  </div>
+                )}
+                {(record as any).ownerDetails && (
+                  <div className="col-span-full">
+                    <span className="font-semibold text-slate-700 block mb-1">Owner / Officer Details</span>
+                    <p className="text-slate-600 bg-white p-3 rounded-lg border border-slate-200">{(record as any).ownerDetails}</p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -365,6 +423,13 @@ type FormData = {
   // Trust specific
   trustType?: string;
   trusteeDetails?: string;
+  isBusiness?: boolean;
+  // Business specific
+  ein?: string;
+  taxId?: string;
+  formationDate?: string;
+  stateOfFormation?: string;
+  ownerDetails?: string;
 };
 
 function RecordFormModal({ type, initialData, onClose, onSubmit }: { 
@@ -373,7 +438,7 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
   onClose: () => void; 
   onSubmit: (data: any) => void;
 }) {
-  const { register, handleSubmit, watch } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue } = useForm<FormData>({
     defaultValues: (initialData as any) || {
       name: '',
       notes: '',
@@ -383,12 +448,14 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
       startBalance: '',
       purchasePrice: '',
       currentValue: '',
-      category: type === 'asset' ? 'bank' : type === 'debt' ? 'mortgage' : undefined,
+      isBusiness: false,
+      category: type === 'asset' ? 'bank' : type === 'debt' ? 'mortgage' : type === 'business' ? 'llc' : undefined,
       trustType: type === 'trust' ? 'revocable' : undefined,
     }
   });
 
   const category = watch('category');
+  const isBusiness = watch('isBusiness');
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
@@ -403,6 +470,18 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
         </div>
         
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <input 
+              type="checkbox" 
+              id="isBusiness" 
+              {...register('isBusiness')} 
+              className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+            />
+            <label htmlFor="isBusiness" className="text-sm font-semibold text-slate-700 flex items-center gap-2 cursor-pointer">
+              <Briefcase className="w-4 h-4" /> This is a Business Entity / Record
+            </label>
+          </div>
+
           {/* Common Fields */}
           <div className="space-y-4">
             <div>
@@ -423,12 +502,20 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
                       <option value="car-boat-motorcycle">Car\Boat\Motorcycle</option>
                       <option value="other">Other</option>
                     </>
-                  ) : (
+                  ) : type === 'debt' ? (
                     <>
                       <option value="mortgage">Mortgage</option>
                       <option value="credit-card">Credit Card</option>
                       <option value="loan">Personal/Business Loan</option>
                       <option value="llc">LLC / Business Entity</option>
+                      <option value="other">Other</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="llc">LLC</option>
+                      <option value="corporation">Corporation</option>
+                      <option value="partnership">Partnership</option>
+                      <option value="sole-proprietorship">Sole Proprietorship</option>
                       <option value="other">Other</option>
                     </>
                   )}
@@ -579,6 +666,34 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
                <div>
                  <label className="block text-sm font-medium text-slate-700 mb-1">Trustee / Executor Details</label>
                  <textarea {...register('trusteeDetails')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" rows={3} placeholder="Names and contact info for trustees or executors..." />
+               </div>
+             </div>
+          )}
+
+          {type === 'business' && (
+             <div className="space-y-4 pt-4 border-t border-slate-100">
+               <h4 className="font-medium text-slate-900">Business Entity Details</h4>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div>
+                   <label className="block text-sm font-medium text-slate-700 mb-1">EIN</label>
+                   <input {...register('ein')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="XX-XXXXXXX" />
+                 </div>
+                 <div>
+                   <label className="block text-sm font-medium text-slate-700 mb-1">Tax ID (if different)</label>
+                   <input {...register('taxId')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                 </div>
+                 <div>
+                   <label className="block text-sm font-medium text-slate-700 mb-1">State of Formation</label>
+                   <input {...register('stateOfFormation')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. Delaware" />
+                 </div>
+                 <div>
+                   <label className="block text-sm font-medium text-slate-700 mb-1">Formation Date</label>
+                   <input {...register('formationDate')} type="date" className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                 </div>
+                 <div className="col-span-full">
+                   <label className="block text-sm font-medium text-slate-700 mb-1">Owner / Officer Details</label>
+                   <textarea {...register('ownerDetails')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" rows={2} placeholder="Names and contact info for owners/officers..." />
+                 </div>
                </div>
              </div>
           )}
