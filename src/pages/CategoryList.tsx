@@ -312,6 +312,9 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
               {(record as any).currentBalance && record.type !== 'asset' && (record as any).category !== 'real-estate' && (
                 <div>
                   <span className="font-semibold text-slate-700 block mb-1">Current Balance</span>
+                  {(record as any).balanceAsOf && (
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">As of {(record as any).balanceAsOf}</div>
+                  )}
                   <span className="text-slate-600">{(record as any).currentBalance}</span>
                 </div>
               )}
@@ -326,6 +329,9 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
               {record.type === 'asset' && (record as any).category !== 'real-estate' && (record as any).currentBalance && (
                 <div>
                   <span className="font-semibold text-slate-700 block mb-1">Current Balance</span>
+                  {(record as any).balanceAsOf && (
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">As of {(record as any).balanceAsOf}</div>
+                  )}
                   <span className="text-slate-600">{(record as any).currentBalance}</span>
                 </div>
               )}
@@ -482,6 +488,7 @@ type FormData = {
   accountNumber?: string;
   url?: string;
   currentBalance?: string;
+  balanceAsOf?: string;
   creditLimit?: string;
   startBalance?: string;
   assetValue?: string;
@@ -532,6 +539,7 @@ function RecordFormModal({ type, initialData, onClose, onSubmit, defaultIsBusine
       accountNumber: '',
       url: '',
       currentBalance: '',
+      balanceAsOf: '',
       creditLimit: '',
       startBalance: '',
       purchasePrice: '',
@@ -666,10 +674,16 @@ function RecordFormModal({ type, initialData, onClose, onSubmit, defaultIsBusine
             {(type === 'asset' || type === 'debt') && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {!(type === 'asset' && category === 'real-estate') && (
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Current Balance</label>
-                    <input {...register('currentBalance')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="$0.00" />
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Current Balance</label>
+                      <input {...register('currentBalance')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="$0.00" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">As of Date</label>
+                      <input type="date" {...register('balanceAsOf')} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                    </div>
+                  </>
                 )}
                 {type === 'debt' && (
                   <div>

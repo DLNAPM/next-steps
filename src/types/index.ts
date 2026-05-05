@@ -23,6 +23,7 @@ export interface AssetRecord extends BaseRecord {
   url?: string;
   institutionName?: string; // For banks, investment firms
   currentBalance?: string; // New field
+  balanceAsOf?: string; // New field
   assetValue?: string; // New field for all assets
   purchasePrice?: string; // Real estate
   currentValue?: string; // Real estate
@@ -40,6 +41,7 @@ export interface DebtRecord extends BaseRecord {
   lenderName?: string;
   currentBalance?: string; // New field
   creditLimit?: string; // New field
+  balanceAsOf?: string; // New field
   startBalance?: string; // New field for specific categories
   controlNumber?: string; // LLC
   stateUrl?: string; // LLC

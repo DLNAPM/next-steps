@@ -271,7 +271,8 @@ export default function Reports() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{typeof (record as any).category === 'string' ? (record as any).category.replace(/-/g, ' ') : String((record as any).category || 'other').replace(/-/g, ' ')}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                            {(record as any).category === 'real-estate' ? (record as any).currentValue || '-' : (record as any).currentBalance || '-'}
+                            <div>{(record as any).category === 'real-estate' ? (record as any).currentValue || '-' : (record as any).currentBalance || '-'}</div>
+                            {(record as any).balanceAsOf && <div className="text-[10px] text-slate-400">As of: {(record as any).balanceAsOf}</div>}
                           </td>
                           <td className="px-6 py-4 text-sm text-slate-500">
                             {(record as any).institutionName && <div className="font-medium">{(record as any).institutionName}</div>}
@@ -326,7 +327,8 @@ export default function Reports() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{typeof (record as any).category === 'string' ? (record as any).category.replace(/-/g, ' ') : String((record as any).category || 'other').replace(/-/g, ' ')}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                             <div>{(record as any).currentBalance || '-'}</div>
-                            {(record as any).startBalance && <div className="text-xs text-slate-400">Start: {(record as any).startBalance}</div>}
+                            {(record as any).balanceAsOf && <div className="text-[10px] text-slate-400">As of: {(record as any).balanceAsOf}</div>}
+                            {(record as any).startBalance && <div className="text-xs text-slate-400 font-medium">Start: {(record as any).startBalance}</div>}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                             {(record as any).creditLimit || '-'}
