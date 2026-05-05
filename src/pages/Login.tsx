@@ -71,13 +71,25 @@ export default function Login() {
           </div>
           
           <div className="relative flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-lg aspect-square rounded-3xl overflow-hidden shadow-2xl border border-slate-100 bg-slate-50">
+            <div className="relative w-full max-w-lg aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl border border-slate-100 bg-slate-900 group">
               <img 
-                src="/Copilot_NextSteps(EPS).jpg" 
-                alt="Next Steps Estate Planning Solutions" 
-                className="w-full h-full object-contain p-4"
+                src="https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&q=80&w=1000" 
+                alt="Lawyer reviewing documents" 
+                className="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition-opacity duration-700"
                 referrerPolicy="no-referrer"
               />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
+              
+              {/* Stylized Badge Overlay */}
+              <div className="absolute bottom-12 left-0 right-0 flex flex-col items-center px-6 text-center">
+                <div className="bg-slate-900/90 backdrop-blur-md border-2 border-amber-500/30 px-8 py-5 rounded-2xl shadow-2xl transform -rotate-1 border-b-amber-500/50">
+                  <div className="text-3xl md:text-4xl font-black text-white tracking-[0.15em] mb-1 leading-none">NEXT STEPS</div>
+                  <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-amber-500 to-transparent my-2" />
+                  <div className="text-[9px] md:text-[10px] font-bold text-amber-400 uppercase tracking-[0.3em] whitespace-nowrap">
+                    Estate Planning Solutions
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
