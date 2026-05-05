@@ -2,8 +2,20 @@ import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useForm } from 'react-hook-form';
 import { FinancialRecord, AssetRecord, DebtRecord, InsuranceRecord, TrustRecord, RecordType } from '../types';
-import { Plus, Trash2, ExternalLink, Edit2, X, ChevronDown, ChevronUp, Briefcase } from 'lucide-react';
+import { Plus, Trash2, ExternalLink, Edit2, X, ChevronDown, ChevronUp, Briefcase, HelpCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
+
+const getTooltipContent = (tab: 'personal' | 'business', type: RecordType) => {
+  if (type === 'business') {
+    return tab === 'personal' 
+      ? "Personal Business (Sole Proprietorship/DBA): Business activities handled individually under your personal SSN without formal legal entity registration. Owner and business are legally the same."
+      : "Formal Business Entity: Registered legal entities such as LLCs, Corporations, or Partnerships with separate EINs. These offer liability protection and are distinct legal 'persons'.";
+  }
+  
+  return tab === 'personal'
+    ? `Personal ${type.charAt(0).toUpperCase() + type.slice(1)}s: Items held in your individual name for personal or household use (e.g., personal bank accounts, primary residence).`
+    : `Business ${type.charAt(0).toUpperCase() + type.slice(1)}s: Items held by a legal business entity or used exclusively for commercial operations (e.g., company equipment, business credit cards).`;
+};
 
 interface CategoryListProps {
   type: RecordType;
@@ -21,6 +33,7 @@ export default function CategoryList({ type, title, description }: CategoryListP
     editingRecordId?: string
   } | null>(null);
   const [activeTab, setActiveTab] = useState<'personal' | 'business'>('personal');
+  const [showTooltip, setShowTooltip] = useState<'personal' | 'business' | null>(null);
 
   const filteredRecords = records.filter(r => r.type === type && (activeTab === 'business' ? r.isBusiness : !r.isBusiness));
 
@@ -56,25 +69,65 @@ export default function CategoryList({ type, title, description }: CategoryListP
         </button>
       </div>
 
-      <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
-        <button
-          onClick={() => setActiveTab('personal')}
-          className={cn(
-            "px-6 py-2 rounded-lg text-sm font-semibold transition-all",
-            activeTab === 'personal' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 font-medium"
-          )}
-        >
-          Personal
-        </button>
-        <button
-          onClick={() => setActiveTab('business')}
-          className={cn(
-            "px-6 py-2 rounded-lg text-sm font-semibold transition-all",
-            activeTab === 'business' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 font-medium"
-          )}
-        >
-          Business
-        </button>
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-1.5 mb-1 px-1">
+          <div className="relative">
+            <button 
+              onMouseEnter={() => setShowTooltip('personal')}
+              onMouseLeave={() => setShowTooltip(null)}
+              onClick={() => setShowTooltip(showTooltip === 'personal' ? null : 'personal')}
+              className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-indigo-500 transition-colors"
+            >
+              <HelpCircle className="w-3 h-3" /> Personal Info
+            </button>
+            {showTooltip === 'personal' && (
+              <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-slate-900 text-white text-xs rounded-xl shadow-xl z-50 pointer-events-none">
+                <div className="font-bold text-indigo-400 mb-1">Personal</div>
+                {getTooltipContent('personal', type)}
+                <div className="absolute bottom-[-4px] left-4 w-2 h-2 bg-slate-900 rotate-45" />
+              </div>
+            )}
+          </div>
+          <div className="w-px h-3 bg-slate-200 mt-0.5 mx-2" />
+          <div className="relative">
+            <button 
+              onMouseEnter={() => setShowTooltip('business')}
+              onMouseLeave={() => setShowTooltip(null)}
+              onClick={() => setShowTooltip(showTooltip === 'business' ? null : 'business')}
+              className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-orange-500 transition-colors"
+            >
+              <HelpCircle className="w-3 h-3" /> Business Info
+            </button>
+            {showTooltip === 'business' && (
+              <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-slate-900 text-white text-xs rounded-xl shadow-xl z-50 pointer-events-none">
+                <div className="font-bold text-orange-400 mb-1">Business</div>
+                {getTooltipContent('business', type)}
+                <div className="absolute bottom-[-4px] left-4 w-2 h-2 bg-slate-900 rotate-45" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
+          <button
+            onClick={() => setActiveTab('personal')}
+            className={cn(
+              "px-6 py-2 rounded-lg text-sm font-semibold transition-all",
+              activeTab === 'personal' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 font-medium"
+            )}
+          >
+            Personal
+          </button>
+          <button
+            onClick={() => setActiveTab('business')}
+            className={cn(
+              "px-6 py-2 rounded-lg text-sm font-semibold transition-all",
+              activeTab === 'business' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 font-medium"
+            )}
+          >
+            Business
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4">
