@@ -55,11 +55,17 @@ export default function Reports() {
     window.print();
   };
 
+// Reports.tsx changes
   const assets = records.filter(r => r.type === 'asset');
   const debts = records.filter(r => r.type === 'debt');
   const insurance = records.filter(r => r.type === 'insurance');
   const trusts = records.filter(r => r.type === 'trust');
   const businessEntities = records.filter(r => r.type === 'business');
+
+  const getBusinessName = (id?: string) => {
+    if (!id) return null;
+    return businessEntities.find(b => b.id === id)?.name;
+  };
 
   const allAccounts = [...assets, ...debts, ...insurance, ...trusts, ...businessEntities];
 
@@ -251,9 +257,16 @@ export default function Reports() {
                       assets.map((record) => (
                         <tr key={record.id} className="break-inside-avoid">
                           <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">
-                            <div className="flex items-center gap-1">
-                              {record.name}
-                              {record.isBusiness && <span className="text-[8px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded border border-slate-200 font-bold uppercase tracking-widest">Business</span>}
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-1">
+                                {record.name}
+                                {record.isBusiness && <span className="text-[8px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded border border-slate-200 font-bold uppercase tracking-widest">Business</span>}
+                              </div>
+                              {record.associatedBusinessId && (
+                                <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-tighter">
+                                  {getBusinessName(record.associatedBusinessId)}
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{typeof (record as any).category === 'string' ? (record as any).category.replace(/-/g, ' ') : String((record as any).category || 'other').replace(/-/g, ' ')}</td>
@@ -297,9 +310,16 @@ export default function Reports() {
                       debts.map((record) => (
                         <tr key={record.id} className="break-inside-avoid">
                           <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">
-                            <div className="flex items-center gap-1">
-                              {record.name}
-                              {record.isBusiness && <span className="text-[8px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded border border-slate-200 font-bold uppercase tracking-widest">Business</span>}
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-1">
+                                {record.name}
+                                {record.isBusiness && <span className="text-[8px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded border border-slate-200 font-bold uppercase tracking-widest">Business</span>}
+                              </div>
+                              {record.associatedBusinessId && (
+                                <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-tighter">
+                                  {getBusinessName(record.associatedBusinessId)}
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{typeof (record as any).category === 'string' ? (record as any).category.replace(/-/g, ' ') : String((record as any).category || 'other').replace(/-/g, ' ')}</td>
@@ -342,9 +362,16 @@ export default function Reports() {
                       insurance.map((record) => (
                         <tr key={record.id} className="break-inside-avoid">
                           <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">
-                            <div className="flex items-center gap-1">
-                              {record.name}
-                              {record.isBusiness && <span className="text-[8px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded border border-slate-200 font-bold uppercase tracking-widest">Business</span>}
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-1">
+                                {record.name}
+                                {record.isBusiness && <span className="text-[8px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded border border-slate-200 font-bold uppercase tracking-widest">Business</span>}
+                              </div>
+                              {record.associatedBusinessId && (
+                                <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-tighter">
+                                  {getBusinessName(record.associatedBusinessId)}
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{(record as any).companyName}</td>

@@ -13,6 +13,7 @@ export interface BaseRecord {
   createdAt: number;
   updatedAt: number;
   isBusiness?: boolean;
+  associatedBusinessId?: string;
 }
 
 export interface AssetRecord extends BaseRecord {

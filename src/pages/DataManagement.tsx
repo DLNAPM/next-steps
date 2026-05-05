@@ -264,6 +264,11 @@ export default function DataManagement() {
                 <td className="px-4 py-2">True if this is a business record (Assets/Debts/Insurance)</td>
               </tr>
               <tr>
+                <td className="px-4 py-2 font-mono text-indigo-600">associatedBusinessId</td>
+                <td className="px-4 py-2">No</td>
+                <td className="px-4 py-2">ID of the Formal Business Entity recorded in the app</td>
+              </tr>
+              <tr>
                 <td className="px-4 py-2 font-mono text-indigo-600">name</td>
                 <td className="px-4 py-2 font-semibold">Yes</td>
                 <td className="px-4 py-2">Name of the account, property, or policy</td>

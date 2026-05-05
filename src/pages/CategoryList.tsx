@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { FinancialRecord, AssetRecord, DebtRecord, InsuranceRecord, TrustRecord, RecordType } from '../types';
 import { Plus, Trash2, ExternalLink, Edit2, X, ChevronDown, ChevronUp, Briefcase, HelpCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { Link } from 'react-router-dom';
 
 const getTooltipContent = (tab: 'personal' | 'business', type: RecordType) => {
   if (type === 'business') {
@@ -229,8 +230,12 @@ export default function CategoryList({ type, title, description }: CategoryListP
 
 const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDelete: () => void }> = ({ record, onEdit, onDelete }) => {
   const [expanded, setExpanded] = useState(false);
-  const { isSharedRecord } = useData();
+  const { isSharedRecord, records } = useData();
   const isShared = isSharedRecord(record);
+
+  const associatedBusiness = record.associatedBusinessId 
+    ? records.find(r => r.id === record.associatedBusinessId)
+    : null;
 
   return (
     <div className={cn(
@@ -257,6 +262,7 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
             </div>
             <p className="text-sm text-slate-500">
               {/* Show a key detail based on type */}
+              {associatedBusiness && <span className="text-indigo-600 font-semibold mr-1">{associatedBusiness.name} •</span>}
               {record.type === 'trust' ? ((record as TrustRecord).trustType ? `Type: ${String((record as TrustRecord).trustType).charAt(0).toUpperCase() + String((record as TrustRecord).trustType).slice(1)}` : 'Trust / Will') :
               record.type === 'business' ? `Business: ${String((record as any).category).toUpperCase()}` :
               (record as any).accountNumber ? `Acct: ••••${(record as any).accountNumber.slice(-4)}` : 'No Account #'}
@@ -477,6 +483,7 @@ type FormData = {
   trustType?: string;
   trusteeDetails?: string;
   isBusiness?: boolean;
+  associatedBusinessId?: string;
   // Business specific
   ein?: string;
   taxId?: string;
@@ -491,7 +498,12 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
   onClose: () => void; 
   onSubmit: (data: any) => void;
 }) {
-  const { register, handleSubmit, watch, setValue } = useForm<FormData>({
+  const { records } = useData();
+  const businessEntities = records
+    .filter(r => r.type === 'business')
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
     defaultValues: (initialData as any) || {
       name: '',
       notes: '',
@@ -502,6 +514,7 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
       purchasePrice: '',
       currentValue: '',
       isBusiness: false,
+      associatedBusinessId: '',
       category: type === 'asset' ? 'bank' : type === 'debt' ? 'mortgage' : type === 'business' ? 'llc' : undefined,
       trustType: type === 'trust' ? 'revocable' : undefined,
     }
@@ -515,7 +528,7 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
           <h3 className="text-xl font-bold text-slate-900">
-            {initialData ? 'Edit' : 'Add'} {type === 'asset' ? 'Asset' : type === 'debt' ? 'Debt' : type === 'insurance' ? 'Insurance Policy' : 'Family Trust & Will'}
+            {initialData ? 'Edit' : 'Add'} {type === 'asset' ? 'Asset' : type === 'debt' ? 'Debt' : type === 'insurance' ? 'Insurance Policy' : type === 'business' ? 'Business Entity' : 'Family Trust & Will'}
           </h3>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full">
             <X className="w-5 h-5 text-slate-500" />
@@ -523,16 +536,42 @@ function RecordFormModal({ type, initialData, onClose, onSubmit }: {
         </div>
         
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
-          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <input 
-              type="checkbox" 
-              id="isBusiness" 
-              {...register('isBusiness')} 
-              className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-            />
-            <label htmlFor="isBusiness" className="text-sm font-semibold text-slate-700 flex items-center gap-2 cursor-pointer">
-              <Briefcase className="w-4 h-4" /> This is a Business Entity / Record
-            </label>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <input 
+                type="checkbox" 
+                id="isBusiness" 
+                {...register('isBusiness')} 
+                className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+              />
+              <label htmlFor="isBusiness" className="text-sm font-semibold text-slate-700 flex items-center gap-2 cursor-pointer">
+                <Briefcase className="w-4 h-4" /> This is a Business Entity / Record
+              </label>
+            </div>
+
+            {isBusiness && type !== 'business' && (
+              <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 animate-in fade-in slide-in-from-top-2">
+                <label className="block text-sm font-semibold text-indigo-900 mb-1.5">Associated Business Entity *</label>
+                <select 
+                  {...register('associatedBusinessId', { required: isBusiness })} 
+                  className={cn(
+                    "w-full px-4 py-2 rounded-lg border bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all",
+                    errors.associatedBusinessId ? "border-red-300 ring-red-100" : "border-slate-300"
+                  )}
+                >
+                  <option value="">Select a Business Entity...</option>
+                  {businessEntities.map(biz => (
+                    <option key={biz.id} value={biz.id}>{biz.name}</option>
+                  ))}
+                </select>
+                {errors.associatedBusinessId && (
+                  <p className="text-xs text-red-600 mt-1 font-medium">Please select a business entity for this record.</p>
+                )}
+                <p className="text-[10px] text-slate-500 mt-2">
+                  Don't see your business? Add it in the <Link to="/business" className="text-indigo-600 hover:underline font-bold">Business Section</Link> first.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Common Fields */}
