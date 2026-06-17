@@ -56,6 +56,24 @@ export default function Advisor() {
     return nameMatch || messagesMatch;
   };
 
+  const highlightMatchedText = (text: string, query: string) => {
+    if (!query.trim()) return text;
+    const parts = text.split(new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi'));
+    return (
+      <>
+        {parts.map((part, i) => 
+          part.toLowerCase() === query.toLowerCase() ? (
+            <mark key={i} className="bg-amber-200 text-amber-950 font-semibold px-0.5 rounded transition-colors shadow-sm">
+              {part}
+            </mark>
+          ) : (
+            part
+          )
+        )}
+      </>
+    );
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -207,6 +225,27 @@ export default function Advisor() {
     setCurrentSessionId(session.id);
     if (window.innerWidth < 768) {
       setIsSidebarOpen(false);
+    }
+
+    if (searchQuery.trim()) {
+      const queryLower = searchQuery.toLowerCase();
+      const firstMatchIdx = session.messages.findIndex(m => 
+        m.text.toLowerCase().includes(queryLower)
+      );
+      if (firstMatchIdx !== -1) {
+        setTimeout(() => {
+          const matchedElement = document.getElementById(`msg-bubble-${firstMatchIdx}`);
+          if (matchedElement) {
+            matchedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Add a vibrant ring pulse that lasts for 3 seconds
+            matchedElement.classList.add('ring-4', 'ring-amber-500', 'ring-offset-2', 'scale-[1.01]', 'duration-500');
+            setTimeout(() => {
+              matchedElement.classList.remove('ring-4', 'ring-amber-500', 'ring-offset-2', 'scale-[1.01]');
+            }, 3000);
+          }
+        }, 200);
+      }
     }
   };
 
@@ -593,36 +632,47 @@ Do not give formal legal or tax advice, but provide educational guidance based o
 
       {/* Chat Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50/50 print:overflow-visible print:bg-white print:p-0">
-        {messages.map((msg, idx) => (
-          <div key={idx} className={cn("flex gap-4 print:gap-2 print:mb-6", msg.role === 'user' ? "flex-row-reverse print:flex-row" : "")}>
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 print:hidden",
-              msg.role === 'user' ? "bg-slate-200 text-slate-600" : "bg-indigo-100 text-indigo-600"
-            )}>
-              {msg.role === 'user' ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
-            </div>
-            
-            {/* Print-only labels */}
-            <div className="hidden print:block font-bold text-slate-900 w-24 shrink-0">
-              {msg.role === 'user' ? 'You:' : 'AI Advisor:'}
-            </div>
-
-            <div className={cn(
-              "max-w-[80%] rounded-2xl px-5 py-3 print:max-w-none print:p-0 print:rounded-none print:border-none print:bg-transparent print:text-slate-900 print:shadow-none",
-              msg.role === 'user' 
-                ? "bg-indigo-600 text-white rounded-tr-none" 
-                : "bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm"
-            )}>
-              {msg.role === 'user' ? (
-                <p className="whitespace-pre-wrap">{msg.text}</p>
-              ) : (
-                <div className="prose prose-sm max-w-none prose-p:leading-relaxed prose-a:text-indigo-600 print:prose-slate print:prose-a:text-slate-900">
-                  <ReactMarkdown>{msg.text}</ReactMarkdown>
-                </div>
+        {messages.map((msg, idx) => {
+          const isBubbleMatched = searchQuery.trim() !== '' && msg.text.toLowerCase().includes(searchQuery.toLowerCase());
+          return (
+            <div 
+              id={`msg-bubble-${idx}`}
+              key={idx} 
+              className={cn(
+                "flex gap-4 print:gap-2 print:mb-6 rounded-2xl transition-all duration-300 p-2", 
+                msg.role === 'user' ? "flex-row-reverse print:flex-row" : "",
+                isBubbleMatched ? "bg-amber-50/60 border border-amber-200 shadow-[0_4px_16px_rgba(245,158,11,0.08)] ring-4 ring-amber-400/20" : "border border-transparent"
               )}
+            >
+              <div className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 print:hidden",
+                msg.role === 'user' ? "bg-slate-200 text-slate-600" : "bg-indigo-100 text-indigo-600"
+              )}>
+                {msg.role === 'user' ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
+              </div>
+              
+              {/* Print-only labels */}
+              <div className="hidden print:block font-bold text-slate-900 w-24 shrink-0">
+                {msg.role === 'user' ? 'You:' : 'AI Advisor:'}
+              </div>
+
+              <div className={cn(
+                "max-w-[80%] rounded-2xl px-5 py-3 print:max-w-none print:p-0 print:rounded-none print:border-none print:bg-transparent print:text-slate-900 print:shadow-none",
+                msg.role === 'user' 
+                  ? cn("bg-indigo-600 text-white rounded-tr-none", isBubbleMatched ? "bg-indigo-700 ring-2 ring-amber-300" : "") 
+                  : cn("bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm", isBubbleMatched ? "bg-amber-50/30 border-amber-300" : "")
+              )}>
+                {msg.role === 'user' ? (
+                  <p className="whitespace-pre-wrap">{highlightMatchedText(msg.text, searchQuery)}</p>
+                ) : (
+                  <div className="prose prose-sm max-w-none prose-p:leading-relaxed prose-a:text-indigo-600 print:prose-slate print:prose-a:text-slate-900">
+                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {isLoading && (
           <div className="flex gap-4">
             <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center flex-shrink-0">
