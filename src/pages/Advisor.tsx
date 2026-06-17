@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { GoogleGenAI } from '@google/genai';
-import { Send, Bot, User, Lock, Sparkles, AlertCircle, Save, History, X, Plus, MessageSquare, Trash2, Share2, Printer, FileText } from 'lucide-react';
+import { Send, Bot, User, Lock, Sparkles, AlertCircle, Save, History, X, Plus, MessageSquare, Trash2, Share2, Printer, FileText, Search } from 'lucide-react';
 import { cn } from '../lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { marked } from 'marked';
@@ -46,6 +46,15 @@ export default function Advisor() {
   const [isSharing, setIsSharing] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [showPremiumModal, setShowPremiumModal] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const isSessionMatched = (session: SavedSession) => {
+    if (!searchQuery.trim()) return false;
+    const queryLower = searchQuery.toLowerCase();
+    const nameMatch = session.name.toLowerCase().includes(queryLower);
+    const messagesMatch = session.messages.some(msg => msg.text.toLowerCase().includes(queryLower));
+    return nameMatch || messagesMatch;
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -389,7 +398,7 @@ Do not give formal legal or tax advice, but provide educational guidance based o
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-4 border-b border-slate-100">
+        <div className="p-4 border-b border-slate-100 space-y-3">
           <button 
             onClick={startNewSession}
             className="w-full flex items-center justify-center gap-2 py-2 bg-indigo-50 text-indigo-700 rounded-xl font-medium hover:bg-indigo-100 transition-colors"
@@ -397,58 +406,116 @@ Do not give formal legal or tax advice, but provide educational guidance based o
             <Plus className="w-4 h-4" />
             New Chat
           </button>
+          
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search in saved sessions..."
+              className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-slate-700 placeholder-slate-400"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')} 
+                className="absolute right-2.5 top-2.5 p-0.5 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 transition-colors"
+                title="Clear Search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {savedSessions.length === 0 ? (
             <p className="text-center text-sm text-slate-500 py-8">No saved sessions yet.</p>
           ) : (
-            savedSessions.map(session => (
-              <div
-                key={session.id}
-                className={cn(
-                  "w-full text-left px-4 py-3 rounded-xl flex items-start gap-3 transition-colors group relative cursor-pointer",
-                  currentSessionId === session.id ? "bg-indigo-50 text-indigo-900" : "hover:bg-slate-50 text-slate-700"
-                )}
-                onClick={() => loadSession(session)}
-              >
-                <MessageSquare className={cn("w-5 h-5 mt-0.5 shrink-0", currentSessionId === session.id ? "text-indigo-600" : "text-slate-400")} />
-                <div className="overflow-hidden flex-1">
-                  <p className="font-medium truncate pr-16">{session.name}</p>
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <span className="truncate">
-                      {session.createdAt?.toDate ? session.createdAt.toDate().toLocaleDateString() : 'Just now'}
-                    </span>
-                    {(session as any).isSharedWithMe && (
-                      <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded text-[10px] font-medium">Shared with me</span>
-                    )}
-                    {session.sharedWithEmail && !(session as any).isSharedWithMe && (
-                      <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] font-medium">Shared</span>
-                    )}
+            savedSessions.map(session => {
+              const matched = isSessionMatched(session);
+              const hasQuery = searchQuery.trim() !== '';
+
+              return (
+                <div
+                  key={session.id}
+                  className={cn(
+                    "w-full text-left px-4 py-3 rounded-xl flex flex-col gap-1 transition-all group relative cursor-pointer border",
+                    currentSessionId === session.id 
+                      ? "bg-indigo-50 text-indigo-900 border-indigo-200" 
+                      : matched
+                        ? "bg-amber-50/80 border-amber-200 text-amber-900 hover:bg-amber-100/80 shadow-[0_2px_8px_rgba(245,158,11,0.1)] border-l-4 border-l-amber-500" 
+                        : "border-transparent hover:bg-slate-50 text-slate-700",
+                    hasQuery && !matched ? "opacity-40 hover:opacity-75" : ""
+                  )}
+                  onClick={() => loadSession(session)}
+                >
+                  <div className="flex items-start gap-2.5 w-full">
+                    <MessageSquare className={cn(
+                      "w-5 h-5 mt-0.5 shrink-0", 
+                      currentSessionId === session.id 
+                        ? "text-indigo-600" 
+                        : matched 
+                          ? "text-amber-600 animate-pulse" 
+                          : "text-slate-400"
+                    )} />
+                    <div className="overflow-hidden flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1.5 w-full">
+                        <p className={cn(
+                          "font-medium truncate pr-14", 
+                          matched ? "text-amber-950 font-bold" : "text-slate-900"
+                        )}>
+                          {session.name}
+                        </p>
+                        {matched && (
+                          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md self-center">
+                            Match
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                        <span className="truncate">
+                          {session.createdAt?.toDate ? session.createdAt.toDate().toLocaleDateString() : 'Just now'}
+                        </span>
+                        {(session as any).isSharedWithMe && (
+                          <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded text-[10px] font-medium">Shared with me</span>
+                        )}
+                        {session.sharedWithEmail && !(session as any).isSharedWithMe && (
+                          <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] font-medium">Shared</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
+                  
+                  {/* Actions (only for owner) */}
+                  {!(session as any).isSharedWithMe && (
+                    <div className={cn(
+                      "absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-4",
+                      currentSessionId === session.id 
+                        ? "bg-gradient-to-l from-indigo-50 via-indigo-50 to-transparent"
+                        : matched
+                          ? "bg-gradient-to-l from-amber-50 via-amber-50 to-transparent"
+                          : "bg-gradient-to-l from-white via-white to-transparent"
+                    )}>
+                      <button
+                        onClick={(e) => openShareModal(e, session)}
+                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Share session"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteSession(e, session.id)}
+                        disabled={isDeleting === session.id}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                        title="Delete session"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-                
-                {/* Actions (only for owner) */}
-                {!(session as any).isSharedWithMe && (
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-l from-white via-white to-transparent pl-4">
-                    <button
-                      onClick={(e) => openShareModal(e, session)}
-                      className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                      title="Share session"
-                    >
-                      <Share2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={(e) => handleDeleteSession(e, session.id)}
-                      disabled={isDeleting === session.id}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                      title="Delete session"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
