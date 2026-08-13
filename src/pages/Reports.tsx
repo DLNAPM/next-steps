@@ -15,6 +15,9 @@ const parseValue = (val?: string | number) => {
 };
 
 const getAssetValue = (record: any) => {
+  if (record.type === 'stock') {
+    return parseValue(record.currentValue || record.amountInvested);
+  }
   if (record.assetValue) return parseValue(record.assetValue);
   if (record.category === 'real-estate' && record.currentValue) return parseValue(record.currentValue);
   if (record.currentBalance) return parseValue(record.currentBalance);
@@ -56,10 +59,10 @@ export default function Reports() {
   };
 
 // Reports.tsx changes
-  const personalAssets = records.filter(r => r.type === 'asset' && !r.isBusiness);
+  const personalAssets = records.filter(r => (r.type === 'asset' || r.type === 'stock') && !r.isBusiness);
   const personalDebts = records.filter(r => r.type === 'debt' && !r.isBusiness);
   const businessEntities = records.filter(r => r.type === 'business');
-  const businessAssets = records.filter(r => r.type === 'asset' && r.isBusiness);
+  const businessAssets = records.filter(r => (r.type === 'asset' || r.type === 'stock') && r.isBusiness);
   const businessDebts = records.filter(r => r.type === 'debt' && r.isBusiness);
   const insurance = records.filter(r => r.type === 'insurance');
   const trusts = records.filter(r => r.type === 'trust');
@@ -73,14 +76,14 @@ export default function Reports() {
     return businessEntities.find(b => b.id === id)?.name;
   };
 
-  // Reordered according to request: Asset, Debt, Business Business, Business Asset, then Business Debt
+  // Reordered according to request: Asset, Debt, Business Entity, Business Asset, then Business Debt
   const allAccounts = [
     ...personalAssets, 
     ...personalDebts, 
-    ...trusts,
     ...businessEntities, 
     ...businessAssets, 
     ...businessDebts, 
+    ...trusts,
     ...insurance
   ];
 

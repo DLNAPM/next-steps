@@ -1,4 +1,4 @@
-export type RecordType = 'asset' | 'debt' | 'insurance' | 'trust' | 'business';
+export type RecordType = 'asset' | 'stock' | 'debt' | 'insurance' | 'trust' | 'business';
 
 export type AssetCategory = 'bank' | 'real-estate' | 'investment' | 'pension' | 'car-boat-motorcycle' | 'other';
 export type DebtCategory = 'mortgage' | 'credit-card' | 'loan' | 'llc' | 'other';
@@ -14,6 +14,21 @@ export interface BaseRecord {
   updatedAt: number;
   isBusiness?: boolean;
   associatedBusinessId?: string;
+}
+
+export interface StockRecord extends BaseRecord {
+  type: 'stock';
+  tickerSymbol: string;
+  stockCompanyName?: string;
+  amountInvested?: string;
+  currentValue?: string;
+  gainLoss?: string;
+  gainLossPercentage?: string;
+  websiteUrl?: string;
+  brokerageCompany?: string;
+  accountNumber?: string;
+  url?: string;
+  category?: string;
 }
 
 export interface AssetRecord extends BaseRecord {
@@ -75,7 +90,7 @@ export interface BusinessRecord extends BaseRecord {
   taxId?: string;
 }
 
-export type FinancialRecord = AssetRecord | DebtRecord | InsuranceRecord | TrustRecord | BusinessRecord;
+export type FinancialRecord = AssetRecord | StockRecord | DebtRecord | InsuranceRecord | TrustRecord | BusinessRecord;
 
 export interface UserProfile {
   uid: string;

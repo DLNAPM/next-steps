@@ -37,6 +37,13 @@ export default function App() {
                     description="Manage your bank accounts, real estate, and investments." 
                   />
                 } />
+                <Route path="stocks" element={
+                  <CategoryList 
+                    type="stock" 
+                    title="Stocks" 
+                    description="Track individual stock holdings, ticker symbols, amounts invested, current values, and gains or losses." 
+                  />
+                } />
                 <Route path="debts" element={
                   <CategoryList 
                     type="debt" 

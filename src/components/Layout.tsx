@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, LayoutDashboard, Landmark, CreditCard, Shield, Menu, X, Users, FileText, Database, HelpCircle, Briefcase, BookOpen, Sparkles, Bot, Settings, ScrollText } from 'lucide-react';
+import { LogOut, LayoutDashboard, Landmark, TrendingUp, CreditCard, Shield, Menu, X, Users, FileText, Database, HelpCircle, Briefcase, BookOpen, Sparkles, Bot, Settings, ScrollText } from 'lucide-react';
 import { cn } from '../lib/utils';
 import HelpModal from './HelpModal';
 import AppIcon from './AppIcon';
@@ -34,6 +34,7 @@ export default function Layout() {
   const navItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/assets', label: 'Assets', icon: Landmark },
+    { path: '/stocks', label: 'Stocks', icon: TrendingUp },
     { path: '/debts', label: 'Debts', icon: CreditCard },
     { path: '/insurance', label: 'Insurance', icon: Shield },
     { path: '/trusts', label: 'Family Trusts & Wills', icon: ScrollText },
