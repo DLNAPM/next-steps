@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { GoogleGenAI } from '@google/genai';
-import { Send, Bot, User, Lock, Sparkles, AlertCircle, Save, History, X, Plus, MessageSquare, Trash2, Share2, Printer, FileText, Search } from 'lucide-react';
+import { Send, Bot, User, Lock, Sparkles, AlertCircle, Save, History, X, Plus, MessageSquare, Trash2, Share2, Printer, FileText, Search, Edit3, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { marked } from 'marked';
@@ -15,6 +15,7 @@ interface SavedSession {
   id: string;
   name: string;
   createdAt: any;
+  updatedAt?: any;
   messages: { role: 'user' | 'model', text: string }[];
   sharedWithEmail?: string;
 }
@@ -37,16 +38,21 @@ export default function Advisor() {
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [sessionName, setSessionName] = useState('');
+  const [renameValue, setRenameValue] = useState('');
   const [shareEmail, setShareEmail] = useState('');
   const [sessionToShare, setSessionToShare] = useState<SavedSession | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [showPremiumModal, setShowPremiumModal] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const activeSession = savedSessions.find(s => s.id === currentSessionId);
 
   const isSessionMatched = (session: SavedSession) => {
     if (!searchQuery.trim()) return false;
@@ -117,10 +123,10 @@ export default function Advisor() {
         }
       });
       
-      // Sort combined sessions by date
+      // Sort combined sessions by date (updatedAt if available, else createdAt)
       sessions.sort((a, b) => {
-        const dateA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-        const dateB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        const dateA = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const dateB = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
         return dateB - dateA;
       });
       
@@ -139,7 +145,8 @@ export default function Advisor() {
         userId: user.uid,
         name: sessionName.trim(),
         messages: messages,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
       
       setCurrentSessionId(docRef.id);
@@ -151,6 +158,36 @@ export default function Advisor() {
       setError("Failed to save session. Please try again.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleRenameSession = async () => {
+    if (!user || !db || !currentSessionId || !renameValue.trim()) return;
+
+    setIsSaving(true);
+    try {
+      await updateDoc(doc(db, 'advisor_sessions', currentSessionId), {
+        name: renameValue.trim(),
+        updatedAt: serverTimestamp()
+      });
+
+      setSavedSessions(prev => prev.map(s => 
+        s.id === currentSessionId ? { ...s, name: renameValue.trim() } : s
+      ));
+      setIsRenameModalOpen(false);
+      setRenameValue('');
+    } catch (err) {
+      console.error("Error renaming session:", err);
+      setError("Failed to rename session.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const openRenameModal = () => {
+    if (activeSession) {
+      setRenameValue(activeSession.name);
+      setIsRenameModalOpen(true);
     }
   };
 
@@ -303,7 +340,8 @@ export default function Advisor() {
 
     const userMessage = input.trim();
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    const newMessages: { role: 'user' | 'model', text: string }[] = [...messages, { role: 'user', text: userMessage }];
+    setMessages(newMessages);
     setIsLoading(true);
     setError(null);
 
@@ -321,7 +359,7 @@ Do not give formal legal or tax advice, but provide educational guidance based o
 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
-      // We need to build the chat history
+      // We build the full chat history including all previous messages from this session
       const contents = messages.map(m => ({
         role: m.role,
         parts: [{ text: m.text }]
@@ -342,7 +380,33 @@ Do not give formal legal or tax advice, but provide educational guidance based o
       });
 
       if (response.text) {
-        setMessages(prev => [...prev, { role: 'model', text: response.text }]);
+        const fullUpdatedMessages: { role: 'user' | 'model', text: string }[] = [
+          ...newMessages,
+          { role: 'model', text: response.text }
+        ];
+        setMessages(fullUpdatedMessages);
+
+        // If currently in an active saved session, automatically update the session in Firestore
+        if (currentSessionId && user && db) {
+          setIsAutoSaving(true);
+          try {
+            await updateDoc(doc(db, 'advisor_sessions', currentSessionId), {
+              messages: fullUpdatedMessages,
+              updatedAt: serverTimestamp()
+            });
+
+            // Keep local savedSessions state synchronized
+            setSavedSessions(prev => prev.map(s => 
+              s.id === currentSessionId 
+                ? { ...s, messages: fullUpdatedMessages, updatedAt: new Date() } 
+                : s
+            ));
+          } catch (updateErr) {
+            console.error("Error auto-updating saved session with follow-up message:", updateErr);
+          } finally {
+            setTimeout(() => setIsAutoSaving(false), 800);
+          }
+        }
       } else {
         throw new Error("No response received from the AI.");
       }
@@ -361,10 +425,7 @@ Do not give formal legal or tax advice, but provide educational guidance based o
   const logoUrl = settings.logoUrl || "/Copilot_NextSteps(EPS).jpg";
 
   const handleExportWord = async () => {
-    if (!currentSessionId) return;
-    
-    const session = savedSessions.find(s => s.id === currentSessionId);
-    const sessionName = session?.name || 'Saved Session';
+    const sessionName = activeSession?.name || 'Financial_Advisor_Session';
     
     let htmlContent = `
       <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -452,50 +513,51 @@ Do not give formal legal or tax advice, but provide educational guidance based o
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search in saved sessions..."
-              className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-slate-700 placeholder-slate-400"
+              placeholder="Search saved chats..."
+              className="w-full pl-9 pr-8 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
             />
             {searchQuery && (
               <button 
-                onClick={() => setSearchQuery('')} 
-                className="absolute right-2.5 top-2.5 p-0.5 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 transition-colors"
-                title="Clear Search"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>
         </div>
+
+        {/* Sessions List */}
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {savedSessions.length === 0 ? (
-            <p className="text-center text-sm text-slate-500 py-8">No saved sessions yet.</p>
+            <div className="text-center py-8 px-4 text-slate-400 text-sm">
+              <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              No saved sessions yet.
+            </div>
           ) : (
-            savedSessions.map(session => {
+            savedSessions.map((session) => {
               const matched = isSessionMatched(session);
-              const hasQuery = searchQuery.trim() !== '';
-
               return (
                 <div
                   key={session.id}
-                  className={cn(
-                    "w-full text-left px-4 py-3 rounded-xl flex flex-col gap-1 transition-all group relative cursor-pointer border",
-                    currentSessionId === session.id 
-                      ? "bg-indigo-50 text-indigo-900 border-indigo-200" 
-                      : matched
-                        ? "bg-amber-50/80 border-amber-200 text-amber-900 hover:bg-amber-100/80 shadow-[0_2px_8px_rgba(245,158,11,0.1)] border-l-4 border-l-amber-500" 
-                        : "border-transparent hover:bg-slate-50 text-slate-700",
-                    hasQuery && !matched ? "opacity-40 hover:opacity-75" : ""
-                  )}
                   onClick={() => loadSession(session)}
+                  className={cn(
+                    "w-full text-left p-3 rounded-xl transition-all duration-200 flex items-center justify-between group relative cursor-pointer",
+                    currentSessionId === session.id 
+                      ? "bg-indigo-50/90 text-indigo-900 font-medium border border-indigo-200/80 shadow-sm" 
+                      : matched 
+                        ? "bg-amber-50/70 border border-amber-300/80 text-amber-950 shadow-sm" 
+                        : "hover:bg-slate-50 text-slate-700 border border-transparent"
+                  )}
                 >
-                  <div className="flex items-start gap-2.5 w-full">
+                  <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0 pr-2">
                     <MessageSquare className={cn(
-                      "w-5 h-5 mt-0.5 shrink-0", 
+                      "w-4 h-4 shrink-0 transition-colors", 
                       currentSessionId === session.id 
                         ? "text-indigo-600" 
                         : matched 
-                          ? "text-amber-600 animate-pulse" 
-                          : "text-slate-400"
+                          ? "text-amber-600" 
+                          : "text-slate-400 group-hover:text-indigo-600"
                     )} />
                     <div className="overflow-hidden flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1.5 w-full">
@@ -513,8 +575,14 @@ Do not give formal legal or tax advice, but provide educational guidance based o
                       </div>
                       <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
                         <span className="truncate">
-                          {session.createdAt?.toDate ? session.createdAt.toDate().toLocaleDateString() : 'Just now'}
+                          {session.updatedAt?.toDate 
+                            ? `Updated ${session.updatedAt.toDate().toLocaleDateString()}` 
+                            : session.createdAt?.toDate 
+                            ? session.createdAt.toDate().toLocaleDateString() 
+                            : 'Just now'}
                         </span>
+                        <span className="text-slate-400">•</span>
+                        <span className="text-[11px] text-slate-400">{session.messages.length} msgs</span>
                         {(session as any).isSharedWithMe && (
                           <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded text-[10px] font-medium">Shared with me</span>
                         )}
@@ -566,7 +634,7 @@ Do not give formal legal or tax advice, but provide educational guidance based o
         <div className="hidden print:block mb-8 border-b border-slate-200 pb-4">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold text-slate-900">
-              AI Advisor Session: {currentSessionId ? savedSessions.find(s => s.id === currentSessionId)?.name || 'Saved Session' : 'Current Session'}
+              AI Advisor Session: {activeSession?.name || 'Financial Advisor Session'}
             </h1>
             <img 
               src={logoUrl} 
@@ -590,42 +658,79 @@ Do not give formal legal or tax advice, but provide educational guidance based o
                 <History className="w-5 h-5" />
               </button>
             )}
-            <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white">
+            <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white shrink-0">
               <Bot className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">AI Financial Advisor</h2>
-              <p className="text-sm text-slate-500">Premium Support</p>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-900">AI Financial Advisor</h2>
+                {activeSession && (
+                  <span className="inline-flex items-center gap-1 text-xs bg-indigo-100/80 text-indigo-800 font-semibold px-2.5 py-0.5 rounded-full border border-indigo-200/60 max-w-[200px] sm:max-w-[300px] truncate">
+                    <History className="w-3 h-3 text-indigo-600 shrink-0" />
+                    <span className="truncate">{activeSession.name}</span>
+                  </span>
+                )}
+                {isAutoSaving && (
+                  <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 font-semibold animate-pulse">
+                    <RefreshCw className="w-3 h-3 animate-spin" /> Auto-saving...
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500">
+                {activeSession ? 'Continuing active saved session (Follow-ups auto-saved)' : 'Personalized insights & scenario modeling'}
+              </p>
             </div>
           </div>
           
           <div className="flex items-center gap-2">
+            {activeSession ? (
+              <>
+                <button
+                  onClick={openRenameModal}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 shadow-sm transition-colors"
+                  title="Rename this saved session"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="hidden md:inline">Rename</span>
+                </button>
+                <button
+                  onClick={startNewSession}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 border border-indigo-200 rounded-lg text-xs sm:text-sm font-semibold text-indigo-700 hover:bg-indigo-100 shadow-sm transition-colors"
+                  title="Start a new chat session"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>New Chat</span>
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setIsSaveModalOpen(true)}
+                disabled={messages.length <= 1}
+                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+                title="Save this session"
+              >
+                <Save className="w-4 h-4" />
+                <span className="hidden sm:inline">Save Session</span>
+              </button>
+            )}
+
             <button
               onClick={handleExportWord}
-              disabled={currentSessionId === null}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
-              title={currentSessionId ? "Export to Word" : "Save session first to export"}
+              disabled={messages.length <= 1}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+              title="Export to Word (.doc)"
             >
-              <FileText className="w-4 h-4" />
+              <FileText className="w-4 h-4 text-indigo-600" />
               <span className="hidden sm:inline">Word</span>
             </button>
             <button
               onClick={handlePrint}
-              disabled={currentSessionId === null}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
-              title={currentSessionId ? "Print / Save as PDF" : "Save session first to print"}
+              disabled={messages.length <= 1}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+              title="Print / Save as PDF"
             >
-              <Printer className="w-4 h-4" />
+              <Printer className="w-4 h-4 text-slate-600" />
               <span className="hidden sm:inline">PDF / Print</span>
-            </button>
-            <button
-              onClick={() => setIsSaveModalOpen(true)}
-              disabled={messages.length <= 1 || currentSessionId !== null}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
-              title={currentSessionId ? "Session already saved" : "Save this session"}
-            >
-              <Save className="w-4 h-4" />
-              <span className="hidden sm:inline">{currentSessionId ? 'Saved' : 'Save Session'}</span>
             </button>
           </div>
         </div>
@@ -702,25 +807,34 @@ Do not give formal legal or tax advice, but provide educational guidance based o
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Ask about your financial data or estate planning scenarios..."
+            placeholder={activeSession ? `Ask a follow-up question in "${activeSession.name}"...` : "Ask about your financial data or estate planning scenarios..."}
             className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-            disabled={isLoading || currentSessionId !== null}
+            disabled={isLoading}
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || isLoading || currentSessionId !== null}
-            className="px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+            disabled={!input.trim() || isLoading}
+            className="px-5 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center shadow-sm"
           >
             <Send className="w-5 h-5" />
           </button>
         </div>
-        {currentSessionId !== null ? (
-          <p className="text-xs text-amber-600 mt-2 text-center font-medium">
-            You are viewing a saved session. Start a new chat to ask more questions.
-          </p>
+        {activeSession ? (
+          <div className="flex items-center justify-between text-xs text-slate-500 mt-2 px-1">
+            <span className="flex items-center gap-1.5 text-indigo-700 font-medium">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Continuing saved session: <strong className="text-slate-800 font-semibold">{activeSession.name}</strong> • Follow-up answers are saved automatically.
+            </span>
+            <button 
+              onClick={startNewSession}
+              className="text-xs text-slate-500 hover:text-indigo-600 underline font-medium cursor-pointer"
+            >
+              Start New Chat
+            </button>
+          </div>
         ) : (
           <p className="text-xs text-slate-400 mt-2 text-center">
-            AI Advisor provides educational guidance, not formal legal or tax advice.
+            AI Advisor provides educational guidance based on your uploaded financial data, not formal legal or tax advice.
           </p>
         )}
       </div>
@@ -740,7 +854,7 @@ Do not give formal legal or tax advice, but provide educational guidance based o
             </div>
             <div className="p-6 space-y-4">
               <p className="text-slate-600 text-sm">
-                Give this session a name so you can refer back to these questions and answers later.
+                Give this session a name so you can refer back to these questions and continue asking additional questions anytime later.
               </p>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Session Name</label>
@@ -748,7 +862,7 @@ Do not give formal legal or tax advice, but provide educational guidance based o
                   type="text"
                   value={sessionName}
                   onChange={(e) => setSessionName(e.target.value)}
-                  placeholder="e.g., Estate Tax Questions"
+                  placeholder="e.g., Estate Tax & Trust Strategy"
                   className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none"
                   autoFocus
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveSession()}
@@ -765,14 +879,64 @@ Do not give formal legal or tax advice, but provide educational guidance based o
               <button
                 onClick={handleSaveSession}
                 disabled={!sessionName.trim() || isSaving}
-                className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
               >
-                {isSaving ? 'Saving...' : 'Save'}
+                {isSaving ? 'Saving...' : 'Save Session'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Rename Modal */}
+      {isRenameModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-indigo-600" />
+                Rename Session
+              </h3>
+              <button onClick={() => setIsRenameModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-slate-600 text-sm">
+                Update the title of this saved session.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Session Name</label>
+                <input
+                  type="text"
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  placeholder="e.g., Updated Financial Strategy"
+                  className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && handleRenameSession()}
+                />
+              </div>
+            </div>
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+              <button
+                onClick={() => setIsRenameModalOpen(false)}
+                className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRenameSession}
+                disabled={!renameValue.trim() || isSaving}
+                className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                {isSaving ? 'Updating...' : 'Update Name'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Share Modal */}
       {isShareModalOpen && sessionToShare && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
