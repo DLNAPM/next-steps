@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useForm } from 'react-hook-form';
 import { FinancialRecord, AssetRecord, StockRecord, DebtRecord, InsuranceRecord, TrustRecord, RecordType } from '../types';
 import { Plus, Trash2, ExternalLink, Edit2, X, ChevronDown, ChevronUp, Briefcase, HelpCircle, ArrowRightLeft, CreditCard, TrendingDown, TrendingUp, DollarSign } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 
 const parseCurrency = (val: string | undefined): number => {
@@ -64,6 +64,7 @@ interface CategoryListProps {
 
 export default function CategoryList({ type, title, description }: CategoryListProps) {
   const { records, addRecord, updateRecord, deleteRecord } = useData();
+  const location = useLocation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<FinancialRecord | null>(null);
   const [duplicateResolution, setDuplicateResolution] = useState<{
@@ -73,6 +74,41 @@ export default function CategoryList({ type, title, description }: CategoryListP
   } | null>(null);
   const [activeTab, setActiveTab] = useState<'personal' | 'business'>('personal');
   const [showTooltip, setShowTooltip] = useState<'personal' | 'business' | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+
+  // Sync tab & target record from navigation location search / state / hash
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tabParam = searchParams.get('tab') as 'personal' | 'business' | null;
+    const targetId = (location.state as any)?.highlightId || searchParams.get('id') || (location.hash ? location.hash.replace('#record-', '') : null);
+
+    if (targetId) {
+      const targetRecord = records.find(r => r.id === targetId);
+      if (targetRecord) {
+        setActiveTab(targetRecord.isBusiness ? 'business' : 'personal');
+      } else if (tabParam === 'business' || tabParam === 'personal') {
+        setActiveTab(tabParam);
+      }
+      setHighlightedId(targetId);
+
+      // Scroll after render
+      setTimeout(() => {
+        const el = document.getElementById(`record-${targetId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 200);
+
+      const timer = setTimeout(() => {
+        setHighlightedId(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    } else if (tabParam === 'business' || tabParam === 'personal') {
+      setActiveTab(tabParam);
+    } else if ((location.state as any)?.tab) {
+      setActiveTab((location.state as any).tab);
+    }
+  }, [location.pathname, location.search, location.hash, location.state, records]);
 
   const filteredRecords = records.filter(r => r.type === type && (activeTab === 'business' ? r.isBusiness : !r.isBusiness));
 
@@ -189,6 +225,7 @@ export default function CategoryList({ type, title, description }: CategoryListP
             <RecordCard 
               key={record.id} 
               record={record} 
+              isHighlighted={highlightedId === record.id}
               onEdit={() => openEditModal(record)} 
               onDelete={() => handleDelete(record.id)} 
             />
@@ -544,7 +581,12 @@ export default function CategoryList({ type, title, description }: CategoryListP
   );
 }
 
-const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDelete: () => void }> = ({ record, onEdit, onDelete }) => {
+const RecordCard: React.FC<{ 
+  record: FinancialRecord; 
+  onEdit: () => void; 
+  onDelete: () => void;
+  isHighlighted?: boolean;
+}> = ({ record, onEdit, onDelete, isHighlighted }) => {
   const [expanded, setExpanded] = useState(false);
   const { isSharedRecord, records, updateRecord } = useData();
   const isShared = isSharedRecord(record);
@@ -554,10 +596,14 @@ const RecordCard: React.FC<{ record: FinancialRecord; onEdit: () => void; onDele
     : null;
 
   return (
-    <div className={cn(
-      "bg-white rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md",
-      isShared ? "border-amber-200 bg-amber-50/30" : "border-slate-200"
-    )}>
+    <div 
+      id={`record-${record.id}`}
+      className={cn(
+        "bg-white rounded-xl border shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md",
+        isShared ? "border-amber-200 bg-amber-50/30" : "border-slate-200",
+        isHighlighted && "ring-4 ring-indigo-500 ring-offset-2 border-indigo-500 shadow-xl bg-indigo-50/20"
+      )}
+    >
       <div className="p-4 flex items-center justify-between cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-center gap-4">
           <div className={cn(
