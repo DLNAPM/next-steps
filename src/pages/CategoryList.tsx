@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useForm } from 'react-hook-form';
 import { FinancialRecord, AssetRecord, StockRecord, DebtRecord, InsuranceRecord, TrustRecord, RecordType } from '../types';
-import { Plus, Trash2, ExternalLink, Edit2, X, ChevronDown, ChevronUp, Briefcase, HelpCircle, ArrowRightLeft, CreditCard, TrendingDown, TrendingUp, DollarSign } from 'lucide-react';
+import { Plus, Trash2, ExternalLink, Edit2, X, ChevronDown, ChevronUp, Briefcase, HelpCircle, ArrowRightLeft, CreditCard, TrendingDown, TrendingUp, DollarSign, RotateCcw, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link, useLocation } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+import { CreditWorthSyncModal } from '../components/CreditWorthSyncModal';
+import { getLatestActiveSnapshot, undoSyncSnapshot, SyncSnapshot } from '../lib/creditWorthSync';
+import { useAuth } from '../contexts/AuthContext';
 
 const parseCurrency = (val: string | undefined): number => {
   if (!val) return 0;
@@ -64,8 +67,12 @@ interface CategoryListProps {
 
 export default function CategoryList({ type, title, description }: CategoryListProps) {
   const { records, addRecord, updateRecord, deleteRecord } = useData();
+  const { user } = useAuth();
   const location = useLocation();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreditWorthModalOpen, setIsCreditWorthModalOpen] = useState(false);
+  const [activeSnapshot, setActiveSnapshot] = useState<SyncSnapshot | null>(null);
+  const [undoFeedback, setUndoFeedback] = useState<string | null>(null);
   const [editingRecord, setEditingRecord] = useState<FinancialRecord | null>(null);
   const [duplicateResolution, setDuplicateResolution] = useState<{
     existing: FinancialRecord,
@@ -75,6 +82,27 @@ export default function CategoryList({ type, title, description }: CategoryListP
   const [activeTab, setActiveTab] = useState<'personal' | 'business'>('personal');
   const [showTooltip, setShowTooltip] = useState<'personal' | 'business' | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (type === 'debt') {
+      const snap = getLatestActiveSnapshot();
+      setActiveSnapshot(snap);
+    }
+  }, [type, records]);
+
+  const handleQuickUndo = async () => {
+    if (!activeSnapshot) return;
+    try {
+      const res = await undoSyncSnapshot(activeSnapshot.id, updateRecord, deleteRecord);
+      if (res.success) {
+        setUndoFeedback(`Successfully reverted ${res.revertedUpdates} updated debts.`);
+        setActiveSnapshot(null);
+        setTimeout(() => setUndoFeedback(null), 5000);
+      }
+    } catch (e: any) {
+      setUndoFeedback(`Failed to undo: ${e.message}`);
+    }
+  };
 
   // Sync tab & target record from navigation location search / state / hash
   useEffect(() => {
@@ -135,14 +163,67 @@ export default function CategoryList({ type, title, description }: CategoryListP
           <h2 className="text-3xl font-bold text-slate-900">{title}</h2>
           <p className="text-slate-500 mt-1">{description}</p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors shadow-sm"
-        >
-          <Plus className="w-5 h-5" />
-          Add {type === 'asset' ? 'Asset' : type === 'stock' ? 'Stock' : type === 'debt' ? 'Debt' : type === 'insurance' ? 'Policy' : type === 'business' ? 'Entity' : 'Trust/Will'}
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          {type === 'debt' && (
+            <button
+              onClick={() => setIsCreditWorthModalOpen(true)}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 text-indigo-700 border border-indigo-200 rounded-xl font-semibold transition-all shadow-xs text-sm"
+              title="Transfer balances & limits directly from What's My Credit Worth"
+            >
+              <Sparkles className="w-4 h-4 text-indigo-600" />
+              <span>Sync from "What's My Credit Worth"</span>
+            </button>
+          )}
+          <button
+            onClick={openAddModal}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors shadow-sm"
+          >
+            <Plus className="w-5 h-5" />
+            Add {type === 'asset' ? 'Asset' : type === 'stock' ? 'Stock' : type === 'debt' ? 'Debt' : type === 'insurance' ? 'Policy' : type === 'business' ? 'Entity' : 'Trust/Will'}
+          </button>
+        </div>
       </div>
+
+      {/* Undo Notification Banner for What's My Credit Worth Sync */}
+      {type === 'debt' && activeSnapshot && !activeSnapshot.isReverted && (
+        <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-300">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2 bg-amber-100 text-amber-800 rounded-xl">
+              <RotateCcw className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-amber-900">
+                Latest sync from {activeSnapshot.sourceApp}
+              </p>
+              <p className="text-xs text-amber-700">
+                {activeSnapshot.summaryText} ({new Date(activeSnapshot.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button
+              onClick={handleQuickUndo}
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-colors shadow-2xs"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Undo Updates</span>
+            </button>
+            <button
+              onClick={() => setIsCreditWorthModalOpen(true)}
+              className="px-3 py-1.5 bg-white border border-amber-300 text-amber-800 hover:bg-amber-50 font-medium rounded-lg text-xs transition-colors"
+            >
+              Inspect History
+            </button>
+          </div>
+        </div>
+      )}
+
+      {undoFeedback && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 animate-in fade-in duration-200">
+          <RotateCcw className="w-4 h-4 text-emerald-600" />
+          <span>{undoFeedback}</span>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <div className="flex gap-1.5 mb-1 px-1">
@@ -508,6 +589,21 @@ export default function CategoryList({ type, title, description }: CategoryListP
             </div>
           </div>
         </div>
+      )}
+
+      {type === 'debt' && (
+        <CreditWorthSyncModal
+          isOpen={isCreditWorthModalOpen}
+          onClose={() => setIsCreditWorthModalOpen(false)}
+          records={records}
+          addRecord={addRecord}
+          updateRecord={updateRecord}
+          deleteRecord={deleteRecord}
+          userEmail={user?.email || undefined}
+          onSyncComplete={(snapshot) => {
+            setActiveSnapshot(snapshot);
+          }}
+        />
       )}
 
       {isModalOpen && (

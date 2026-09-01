@@ -1,5 +1,6 @@
 {
   "name": "Next Steps",
-  "description": "A Family Financial Records App to organize assets, debts, and insurance for loved ones.",
-  "requestFramePermissions": []
+  "description": "A Family Financial Records App to organize assets, debts, and insurance for loved ones with cross-app credit and estate synchronization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

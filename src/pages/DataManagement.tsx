@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
@@ -21,7 +21,10 @@ import {
   Eye, 
   ExternalLink,
   Layers,
-  ArrowRight
+  ArrowRight,
+  ArrowRightLeft,
+  RotateCcw,
+  CreditCard
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { FinancialRecord } from '../types';
@@ -37,9 +40,16 @@ import {
   formatCurrency,
   parseValue
 } from '../lib/estatePlanExporters';
+import { CreditWorthSyncModal } from '../components/CreditWorthSyncModal';
+import { 
+  downloadCreditWorthJSON, 
+  getLatestActiveSnapshot, 
+  undoSyncSnapshot, 
+  SyncSnapshot 
+} from '../lib/creditWorthSync';
 
 export default function DataManagement() {
-  const { records, addRecord, updateRecord } = useData();
+  const { records, addRecord, updateRecord, deleteRecord } = useData();
   const { user } = useAuth();
   const { settings } = useSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,7 +59,29 @@ export default function DataManagement() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showCreditWorthModal, setShowCreditWorthModal] = useState(false);
+  const [activeSnapshot, setActiveSnapshot] = useState<SyncSnapshot | null>(null);
+  const [undoFeedback, setUndoFeedback] = useState<string | null>(null);
   const [previewTab, setPreviewTab] = useState<'all' | 'real_estate' | 'bank' | 'stocks' | 'insurance' | 'business' | 'debts'>('all');
+
+  useEffect(() => {
+    const snap = getLatestActiveSnapshot();
+    setActiveSnapshot(snap);
+  }, [records]);
+
+  const handleQuickUndo = async () => {
+    if (!activeSnapshot) return;
+    try {
+      const res = await undoSyncSnapshot(activeSnapshot.id, updateRecord, deleteRecord);
+      if (res.success) {
+        setUndoFeedback(`Successfully reverted ${res.revertedUpdates} updated debts.`);
+        setActiveSnapshot(null);
+        setTimeout(() => setUndoFeedback(null), 5000);
+      }
+    } catch (e: any) {
+      setUndoFeedback(`Failed to undo: ${e.message}`);
+    }
+  };
   
   const [duplicateResolution, setDuplicateResolution] = useState<{
     duplicates: { existing: FinancialRecord, new: any }[],
@@ -286,7 +318,7 @@ export default function DataManagement() {
         <div>
           <h2 className="text-3xl font-bold text-slate-900">Data Import & Export</h2>
           <p className="text-slate-500 mt-1">
-            Export your family records formatted specifically for major Online Estate Planning applications or backup your data.
+            Export your family records formatted specifically for major Online Estate Planning applications, sync with "What's My Credit Worth", or backup your data.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -298,6 +330,77 @@ export default function DataManagement() {
             Preview Export Data ({records.length} Records)
           </button>
         </div>
+      </div>
+
+      {/* "What's My Credit Worth" Cross-App Integration Hub */}
+      <div className="bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-indigo-800/60 relative overflow-hidden">
+        <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+          <div className="space-y-2 max-w-2xl">
+            <div className="flex items-center gap-2.5">
+              <span className="px-3 py-1 bg-indigo-500/30 border border-indigo-400/30 text-indigo-200 text-xs font-bold uppercase tracking-wider rounded-full flex items-center gap-1.5">
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+                Cross-App Integration
+              </span>
+              <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 text-xs font-semibold rounded-full border border-emerald-500/30">
+                1-Click Transfer & Undo
+              </span>
+            </div>
+            <h3 className="text-2xl font-black tracking-tight text-white">
+              Connect with "What's My Credit Worth"
+            </h3>
+            <p className="text-sm text-indigo-200 leading-relaxed">
+              Instantly synchronize credit cards, mortgages, installment loans, balances, and credit limits between apps. Review field-by-field differences before applying, and easily roll back with <strong>1-Click Undo</strong> if numbers need adjustment.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setShowCreditWorthModal(true)}
+              className="px-5 py-3 bg-indigo-500 hover:bg-indigo-400 text-white font-bold rounded-xl text-sm transition-all shadow-lg hover:shadow-indigo-500/25 flex items-center gap-2"
+            >
+              <Sparkles className="w-4 h-4 text-indigo-100" />
+              <span>1-Click Sync & Diff</span>
+            </button>
+
+            <button
+              onClick={() => downloadCreditWorthJSON(records, user?.email || undefined)}
+              className="px-4 py-3 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-semibold rounded-xl text-sm transition-colors flex items-center gap-2"
+            >
+              <Download className="w-4 h-4 text-indigo-300" />
+              <span>Export Payload (.json)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Undo Banner inside Integration Hub if recent sync exists */}
+        {activeSnapshot && !activeSnapshot.isReverted && (
+          <div className="mt-6 pt-4 border-t border-indigo-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs bg-indigo-950/60 p-3.5 rounded-xl border border-indigo-700/50">
+            <div className="flex items-center gap-2.5 text-indigo-200">
+              <RotateCcw className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>
+                Active restore point available: <strong>{activeSnapshot.summaryText}</strong>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleQuickUndo}
+                className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition-colors flex items-center gap-1 shadow-xs"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Undo Updates</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {undoFeedback && (
+          <div className="mt-4 p-3 bg-emerald-900/60 border border-emerald-500/40 text-emerald-200 rounded-xl text-xs font-semibold flex items-center gap-2">
+            <Check className="w-4 h-4 text-emerald-400" />
+            <span>{undoFeedback}</span>
+          </div>
+        )}
       </div>
 
       {/* Main Grid: Export & Import */}
@@ -871,6 +974,20 @@ export default function DataManagement() {
           </div>
         </div>
       )}
+
+      {/* What's My Credit Worth Sync & Undo Modal */}
+      <CreditWorthSyncModal
+        isOpen={showCreditWorthModal}
+        onClose={() => setShowCreditWorthModal(false)}
+        records={records}
+        addRecord={addRecord}
+        updateRecord={updateRecord}
+        deleteRecord={deleteRecord}
+        userEmail={user?.email || undefined}
+        onSyncComplete={(snap) => {
+          setActiveSnapshot(snap);
+        }}
+      />
     </div>
   );
 }
