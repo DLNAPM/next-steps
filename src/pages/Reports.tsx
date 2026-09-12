@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { Printer, FileText, PieChart as PieChartIcon, Lock, AlertCircle, Upload, X } from 'lucide-react';
+import { Printer, FileText, PieChart as PieChartIcon, Lock, AlertCircle, Upload, X, Sparkles, ScrollText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PremiumModal from '../components/PremiumModal';
+import FamilyEstateReport from '../components/FamilyEstateReport';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const parseValue = (val?: string | number) => {
@@ -47,7 +48,7 @@ export default function Reports() {
   const { user } = useAuth();
   const { settings } = useSettings();
   const [error, setError] = useState<string | null>(null);
-  const [reportType, setReportType] = useState<'standard' | 'accounts'>('standard');
+  const [reportType, setReportType] = useState<'standard' | 'accounts' | 'estate_planning'>('standard');
   const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   const handlePrint = () => {
@@ -144,31 +145,53 @@ export default function Reports() {
         onClose={() => setShowPremiumModal(false)} 
         featureName="Print Reports"
       />
-      <div className="flex items-center justify-between print:hidden">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 print:hidden">
         <div>
-          <h2 className="text-3xl font-bold text-slate-900">Financial Report</h2>
-          <p className="text-slate-500 mt-1">Summary of all recorded assets, debts, and policies.</p>
+          <h2 className="text-3xl font-bold text-slate-900">Financial Reports</h2>
+          <p className="text-slate-500 mt-1">Summary of recorded assets, liabilities, accounts, and estate planning roadmaps.</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Primary Button to Generate Family Estate Financial Planning Report */}
+          <button
+            onClick={() => setReportType('estate_planning')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition-all shadow-xs text-sm cursor-pointer ${
+              reportType === 'estate_planning'
+                ? 'bg-indigo-600 text-white shadow-indigo-200 ring-2 ring-indigo-500 ring-offset-2'
+                : 'bg-gradient-to-r from-indigo-50 via-purple-50 to-blue-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-700 border border-indigo-200'
+            }`}
+            title="Generate comprehensive 10-section Family Estate Financial Planning Report"
+          >
+            <Sparkles className="w-4 h-4 text-indigo-600" />
+            <span>Generate Family Estate Financial Planning Report</span>
+          </button>
+
           <div className="flex bg-slate-100 p-1 rounded-xl">
             <button
               onClick={() => setReportType('standard')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${reportType === 'standard' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${reportType === 'standard' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
-              Standard Report
+              Standard
             </button>
             <button
               onClick={() => setReportType('accounts')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${reportType === 'accounts' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${reportType === 'accounts' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
               Accounts Access
             </button>
+            <button
+              onClick={() => setReportType('estate_planning')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${reportType === 'estate_planning' ? 'bg-white text-indigo-700 shadow-sm font-semibold' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <ScrollText className="w-3.5 h-3.5" />
+              <span>Estate Plan</span>
+            </button>
           </div>
+
           <button
             onClick={handlePrint}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors shadow-sm ${user?.isPremium ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors shadow-sm text-sm ${user?.isPremium ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
           >
-            {user?.isPremium ? <Printer className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+            {user?.isPremium ? <Printer className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
             Print Report
             {!user?.isPremium && <span className="ml-1 text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-bold tracking-wider">PRO</span>}
           </button>
@@ -182,26 +205,28 @@ export default function Reports() {
         </div>
       )}
 
-      {/* Print Header */}
-      <div className="hidden print:block mb-8 border-b border-slate-200 pb-4">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-slate-900">
-            {reportType === 'standard' ? 'Next Steps - Family Financial Record' : 'Next Steps - Accounts Access Spreadsheet'}
-          </h1>
-          <img 
-            src={logoUrl || "/Copilot_NextSteps(EPS).jpg"} 
-            alt="Next Steps Logo" 
-            className="h-[60px] w-auto object-contain"
-            referrerPolicy="no-referrer"
-          />
+      {/* Print Header (Only rendered for Standard & Accounts views; Estate Planning Report provides its own comprehensive cover header) */}
+      {reportType !== 'estate_planning' && (
+        <div className="hidden print:block mb-8 border-b border-slate-200 pb-4">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold text-slate-900">
+              {reportType === 'standard' ? 'Next Steps - Family Financial Record' : 'Next Steps - Accounts Access Spreadsheet'}
+            </h1>
+            <img 
+              src={logoUrl || "/Copilot_NextSteps(EPS).jpg"} 
+              alt="Next Steps Logo" 
+              className="h-[60px] w-auto object-contain"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <p className="text-slate-500">Generated for {user?.displayName} on {new Date().toLocaleDateString()}</p>
+          {reportType === 'accounts' && (
+            <p className="text-xs text-slate-400 mt-2 italic">
+              Note: This document contains sensitive information. Store it in a secure physical location.
+            </p>
+          )}
         </div>
-        <p className="text-slate-500">Generated for {user?.displayName} on {new Date().toLocaleDateString()}</p>
-        {reportType === 'accounts' && (
-          <p className="text-xs text-slate-400 mt-2 italic">
-            Note: This document contains sensitive information. Store it in a secure physical location.
-          </p>
-        )}
-      </div>
+      )}
 
       {reportType === 'standard' ? (
         <>
@@ -611,7 +636,7 @@ export default function Reports() {
             </section>
           </div>
         </>
-      ) : (
+      ) : reportType === 'accounts' ? (
         <section className="animate-fade-in">
           <div className="mb-6 print:hidden flex items-start justify-between">
             <div>
@@ -688,6 +713,14 @@ export default function Reports() {
             </ul>
           </div>
         </section>
+      ) : (
+        <FamilyEstateReport
+          records={records}
+          user={user}
+          settings={settings}
+          onPrint={handlePrint}
+          onClose={() => setReportType('standard')}
+        />
       )}
     </div>
   );
