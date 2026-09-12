@@ -10,19 +10,27 @@ import {
   AlertCircle, 
   ShieldCheck, 
   CreditCard, 
+  Building2, 
+  TrendingUp, 
   ArrowRight, 
   Sparkles, 
   Clock, 
   CheckCircle2, 
   HelpCircle,
   FileCode,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Layers,
+  Wallet
 } from 'lucide-react';
-import { FinancialRecord, DebtRecord } from '../types';
+import { FinancialRecord, DebtRecord, AssetRecord, StockRecord, RecordType } from '../types';
 import { 
   CreditWorthAccount, 
+  CreditWorthAsset, 
+  CreditWorthStock, 
   AccountDiffItem, 
   SyncSnapshot,
+  SyncItemType,
+  ParsedCreditWorthData,
   parseCreditWorthPayload, 
   generateSyncDiff, 
   executeCreditWorthSync, 
@@ -42,6 +50,7 @@ interface CreditWorthSyncModalProps {
   updateRecord: (id: string, record: any) => Promise<void>;
   deleteRecord: (id: string) => Promise<void>;
   userEmail?: string;
+  targetType?: SyncItemType | 'all';
   onSyncComplete?: (snapshot: SyncSnapshot) => void;
 }
 
@@ -53,12 +62,14 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
   updateRecord,
   deleteRecord,
   userEmail,
+  targetType = 'all',
   onSyncComplete
 }) => {
   const [activeTab, setActiveTab] = useState<'sync' | 'export' | 'history'>('sync');
   const [payloadText, setPayloadText] = useState('');
-  const [parsedAccounts, setParsedAccounts] = useState<CreditWorthAccount[]>([]);
+  const [parsedData, setParsedData] = useState<ParsedCreditWorthData>({ debts: [], assets: [], stocks: [] });
   const [diffItems, setDiffItems] = useState<AccountDiffItem[]>([]);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<SyncItemType | 'all'>('all');
   const [step, setStep] = useState<'input' | 'diff' | 'success'>('input');
   const [isProcessing, setIsProcessing] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -66,30 +77,59 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
   const [snapshots, setSnapshots] = useState<SyncSnapshot[]>([]);
   const [latestSnapshot, setLatestSnapshot] = useState<SyncSnapshot | null>(null);
   const [undoStatus, setUndoStatus] = useState<string | null>(null);
+  const [exportScope, setExportScope] = useState<SyncItemType | 'all'>('all');
 
-  // Filter existing debts
   const existingDebts = records.filter((r): r is DebtRecord => r.type === 'debt');
+  const existingAssets = records.filter((r): r is AssetRecord => r.type === 'asset');
+  const existingStocks = records.filter((r): r is StockRecord => r.type === 'stock');
 
   useEffect(() => {
     if (isOpen) {
       loadHistory();
       setStep('input');
       setPayloadText('');
-      setParsedAccounts([]);
+      setParsedData({ debts: [], assets: [], stocks: [] });
       setDiffItems([]);
+      setSelectedCategoryFilter(targetType === 'all' ? 'all' : targetType);
+      setExportScope(targetType === 'all' ? 'all' : targetType);
       setErrorMsg(null);
       setUndoStatus(null);
     }
-  }, [isOpen]);
+  }, [isOpen, targetType]);
 
   const loadHistory = () => {
     const history = getSyncSnapshots();
     setSnapshots(history);
-    const active = history.find(s => !s.isReverted) || null;
+    const active = history.find(s => {
+      if (s.isReverted) return false;
+      if (targetType === 'all') return true;
+      return s.typesAffected && s.typesAffected.includes(targetType);
+    }) || null;
     setLatestSnapshot(active);
   };
 
   if (!isOpen) return null;
+
+  // Header dynamic labels
+  const getContextTitle = () => {
+    if (targetType === 'asset') return 'Asset & Property Synchronization';
+    if (targetType === 'stock') return 'Stock & Portfolio Synchronization';
+    if (targetType === 'debt') return 'Debt & Credit Line Synchronization';
+    return 'Universal Financial Synchronization';
+  };
+
+  const getContextDescription = () => {
+    if (targetType === 'asset') {
+      return 'Seamlessly transfer bank accounts, cash reserves, real estate, and vehicle values from "What\'s My Credit Worth" with 1-click comparison.';
+    }
+    if (targetType === 'stock') {
+      return 'Sync ticker symbols, holdings, market values, and brokerages directly from "What\'s My Credit Worth" with instant undo protection.';
+    }
+    if (targetType === 'debt') {
+      return 'Transfer credit cards, mortgages, auto loans, balances, and credit limits between apps with field-by-field diff review.';
+    }
+    return 'Synchronize debts, assets, and stocks from "What\'s My Credit Worth" with field-by-field smart comparison and instant 1-Click Undo.';
+  };
 
   // Handle parse from text / clipboard
   const handleParseInput = (rawText?: string) => {
@@ -102,14 +142,34 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
     }
 
     try {
-      const accounts = parseCreditWorthPayload(textToUse);
-      if (accounts.length === 0) {
-        setErrorMsg('Could not find valid debt or credit accounts in the provided data. Please verify the format.');
+      const parsed = parseCreditWorthPayload(textToUse, targetType === 'all' ? undefined : targetType);
+      const totalCount = parsed.debts.length + parsed.assets.length + parsed.stocks.length;
+
+      if (totalCount === 0) {
+        setErrorMsg('Could not recognize any valid debt, asset, or stock records in the provided data. Please verify format.');
         return;
       }
 
-      setParsedAccounts(accounts);
-      const diff = generateSyncDiff(existingDebts, accounts);
+      setParsedData(parsed);
+
+      // Determine initial filter based on available parsed items
+      const hasDebts = parsed.debts.length > 0;
+      const hasAssets = parsed.assets.length > 0;
+      const hasStocks = parsed.stocks.length > 0;
+
+      let initialFilter: SyncItemType | 'all' = 'all';
+      if (targetType !== 'all') {
+        initialFilter = targetType;
+      } else if (hasDebts && !hasAssets && !hasStocks) {
+        initialFilter = 'debt';
+      } else if (!hasDebts && hasAssets && !hasStocks) {
+        initialFilter = 'asset';
+      } else if (!hasDebts && !hasAssets && hasStocks) {
+        initialFilter = 'stock';
+      }
+      setSelectedCategoryFilter(initialFilter);
+
+      const diff = generateSyncDiff(records, parsed, targetType === 'all' ? 'all' : targetType);
       setDiffItems(diff);
       setStep('diff');
     } catch (err: any) {
@@ -137,15 +197,14 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
         try {
           const data = new Uint8Array(event.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json(firstSheet);
-          const accounts = parseCreditWorthPayload(rows);
-          if (accounts.length === 0) {
-            setErrorMsg('No valid account columns recognized in spreadsheet.');
+          const parsed = parseCreditWorthPayload(workbook, targetType === 'all' ? undefined : targetType);
+          const totalCount = parsed.debts.length + parsed.assets.length + parsed.stocks.length;
+          if (totalCount === 0) {
+            setErrorMsg('No recognizable debt, asset, or stock records found in the spreadsheet.');
             return;
           }
-          setParsedAccounts(accounts);
-          const diff = generateSyncDiff(existingDebts, accounts);
+          setParsedData(parsed);
+          const diff = generateSyncDiff(records, parsed, targetType === 'all' ? 'all' : targetType);
           setDiffItems(diff);
           setStep('diff');
         } catch (err: any) {
@@ -175,7 +234,12 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
   };
 
   const handleSelectAll = (select: boolean) => {
-    setDiffItems(prev => prev.map(item => ({ ...item, selected: select })));
+    setDiffItems(prev => prev.map(item => {
+      if (selectedCategoryFilter !== 'all' && item.recordType !== selectedCategoryFilter) {
+        return item;
+      }
+      return { ...item, selected: select };
+    }));
   };
 
   // Execute sync
@@ -204,7 +268,7 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
     try {
       const res = await undoSyncSnapshot(snapshotId, updateRecord, deleteRecord);
       if (res.success) {
-        setUndoStatus(`Successfully restored ${res.revertedUpdates} updated accounts.`);
+        setUndoStatus(`Successfully restored ${res.revertedUpdates} modified records.`);
         loadHistory();
       } else {
         setUndoStatus('Could not revert this snapshot (it may already be reverted).');
@@ -218,16 +282,32 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
 
   // Copy export payload to clipboard
   const handleCopyExportPayload = () => {
-    const payload = generateCreditWorthExportPayload(records, userEmail);
+    const payload = generateCreditWorthExportPayload(records, userEmail, exportScope);
     navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
 
+  // Filtered diff items based on category pill
+  const visibleDiffItems = diffItems.filter(item => {
+    if (selectedCategoryFilter === 'all') return true;
+    return item.recordType === selectedCategoryFilter;
+  });
+
   const selectedCount = diffItems.filter(d => d.selected && d.action !== 'UNCHANGED').length;
   const createdCount = diffItems.filter(d => d.selected && d.action === 'CREATE').length;
   const updatedCount = diffItems.filter(d => d.selected && d.action === 'UPDATE').length;
   const unchangedCount = diffItems.filter(d => d.action === 'UNCHANGED').length;
+
+  const debtDiffCount = diffItems.filter(d => d.recordType === 'debt').length;
+  const assetDiffCount = diffItems.filter(d => d.recordType === 'asset').length;
+  const stockDiffCount = diffItems.filter(d => d.recordType === 'stock').length;
+
+  // Export statistics
+  const totalDebtBalance = existingDebts.reduce((sum, d) => sum + (parseFloat(String(d.currentBalance || '0').replace(/[^0-9.-]+/g, '')) || 0), 0);
+  const totalAssetValue = existingAssets.reduce((sum, a) => sum + (parseFloat(String(a.currentBalance || a.assetValue || a.currentValue || '0').replace(/[^0-9.-]+/g, '')) || 0), 0);
+  const totalStockValue = existingStocks.reduce((sum, s) => sum + (parseFloat(String(s.currentValue || '0').replace(/[^0-9.-]+/g, '')) || 0), 0);
+  const netWorthCalculated = (totalAssetValue + totalStockValue) - totalDebtBalance;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -241,13 +321,13 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold">"What's My Credit Worth" Integration</h2>
+                <h2 className="text-xl font-bold">{getContextTitle()}</h2>
                 <span className="px-2 py-0.5 text-xs font-semibold bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 rounded-full">
-                  1-Click Sync & Diff
+                  What's My Credit Worth Sync
                 </span>
               </div>
               <p className="text-xs text-indigo-200 mt-0.5">
-                Seamlessly transfer credit cards, balances, limits, and loans between apps with instant Undo protection
+                {getContextDescription()}
               </p>
             </div>
           </div>
@@ -313,10 +393,12 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
                   <div className="bg-indigo-50/80 border border-indigo-100 rounded-xl p-4 flex items-start gap-3">
                     <Sparkles className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
                     <div className="text-sm text-indigo-950">
-                      <p className="font-semibold text-indigo-900">How 1-Click Transfer Works:</p>
+                      <p className="font-semibold text-indigo-900">How 1-Click Synchronization Works:</p>
                       <p className="text-slate-700 mt-1">
-                        Export or copy your debt/credit accounts from <strong>"What's My Credit Worth"</strong> and paste them here or upload the file. Next Steps will compare balances and limits, show you a side-by-side comparison, and update your debts with a single click. 
-                        <strong> If any numbers look incorrect, you can hit "Undo" at any time.</strong>
+                        Export or copy your data from <strong>"What's My Credit Worth"</strong> (debts, assets, or stock portfolios) and paste below or upload the file. Next Steps automatically categorizes items, highlights field-by-field differences, and applies updates in 1 click.
+                        <strong className="block mt-1 text-indigo-900">
+                          ✓ Every transfer creates a snapshot point with instant 1-Click Undo protection.
+                        </strong>
                       </p>
                     </div>
                   </div>
@@ -331,7 +413,7 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
                           <span>Option 1: Paste from Clipboard</span>
                         </div>
                         <p className="text-xs text-slate-500 mb-4">
-                          If you copied the JSON or account table from "What's My Credit Worth", click below to paste and review instantly.
+                          If you copied JSON, account details, or export tables from "What's My Credit Worth", click below to paste and analyze instantly.
                         </p>
                       </div>
                       <button
@@ -348,18 +430,18 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
                       <div>
                         <div className="flex items-center gap-2 text-slate-900 font-semibold mb-1">
                           <Upload className="w-4 h-4 text-indigo-600" />
-                          <span>Option 2: Upload Export File</span>
+                          <span>Option 2: Upload File (.json, .xlsx, .csv)</span>
                         </div>
                         <p className="text-xs text-slate-500 mb-4">
-                          Select the exported <code className="text-xs bg-slate-100 px-1 py-0.5 rounded">.json</code>, <code className="text-xs bg-slate-100 px-1 py-0.5 rounded">.csv</code>, or <code className="text-xs bg-slate-100 px-1 py-0.5 rounded">.xlsx</code> from What's My Credit Worth.
+                          Upload your exported JSON or spreadsheet from "What's My Credit Worth" for automated field mapping and diff comparison.
                         </p>
                       </div>
-                      <label className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium rounded-lg border border-slate-300 text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors">
-                        <Upload className="w-4 h-4 text-slate-600" />
-                        <span>Browse Files...</span>
+                      <label className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium rounded-lg border border-slate-200 text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer">
+                        <Upload className="w-4 h-4" />
+                        <span>Select File</span>
                         <input
                           type="file"
-                          accept=".json,.csv,.xlsx,.xls,.txt"
+                          accept=".json,.xlsx,.xls,.csv,.txt"
                           onChange={handleFileUpload}
                           className="hidden"
                         />
@@ -369,26 +451,94 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
 
                   {/* Manual Paste Text Area */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Or Paste Raw Payload / Account Text Below:
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <FileCode className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Or Paste Raw Payload / JSON / CSV Text:</span>
+                      </label>
+                      <button
+                        onClick={() => {
+                          const demoPayload = {
+                            app: "WhatsMyCreditWorth",
+                            version: "2.0",
+                            exportedAt: new Date().toISOString(),
+                            debts: [
+                              {
+                                name: "Chase Sapphire Reserve",
+                                lenderName: "Chase Bank",
+                                category: "credit-card",
+                                currentBalance: "$4,250.00",
+                                creditLimit: "$18,000.00",
+                                accountNumber: "4821",
+                                apr: "21.4"
+                              }
+                            ],
+                            assets: [
+                              {
+                                name: "Chase Premier Savings",
+                                institutionName: "Chase Bank",
+                                category: "bank",
+                                currentBalance: "$34,500.00",
+                                accountNumber: "9912",
+                                balanceAsOf: new Date().toISOString().split('T')[0]
+                              },
+                              {
+                                name: "Primary Residence",
+                                category: "real-estate",
+                                assetValue: "$580,000.00",
+                                purchasePrice: "$420,000.00",
+                                institutionName: "Direct Property Deed"
+                              }
+                            ],
+                            stocks: [
+                              {
+                                tickerSymbol: "AAPL",
+                                stockCompanyName: "Apple Inc.",
+                                name: "Apple Inc. (AAPL)",
+                                brokerageCompany: "Charles Schwab",
+                                currentValue: "$18,450.00",
+                                amountInvested: "$12,000.00",
+                                gainLoss: "+$6,450.00",
+                                gainLossPercentage: "+53.7%"
+                              },
+                              {
+                                tickerSymbol: "VTI",
+                                stockCompanyName: "Vanguard Total Stock Market ETF",
+                                name: "Vanguard Total Stock ETF (VTI)",
+                                brokerageCompany: "Vanguard",
+                                currentValue: "$45,200.00",
+                                amountInvested: "$35,000.00",
+                                gainLoss: "+$10,200.00",
+                                gainLossPercentage: "+29.1%"
+                              }
+                            ]
+                          };
+                          setPayloadText(JSON.stringify(demoPayload, null, 2));
+                        }}
+                        className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                      >
+                        Load Sample Integration Payload
+                      </button>
+                    </div>
+
                     <textarea
-                      rows={5}
                       value={payloadText}
                       onChange={(e) => setPayloadText(e.target.value)}
-                      placeholder='{"app": "WhatsMyCreditWorth", "accounts": [{"name": "Chase Sapphire", "currentBalance": "$3,850", "creditLimit": "$15,000"}]}'
-                      className="w-full text-xs font-mono p-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      placeholder='Paste JSON payload (e.g. {"debts": [...], "assets": [...], "stocks": [...]}) or CSV text from "What&apos;s My Credit Worth"...'
+                      rows={6}
+                      className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                     />
                   </div>
 
                   {errorMsg && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2">
+                    <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
                       <span>{errorMsg}</span>
                     </div>
                   )}
 
-                  <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+                  {/* Analyze Button */}
+                  <div className="flex justify-end gap-3 pt-2">
                     <button
                       onClick={onClose}
                       className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
@@ -414,10 +564,10 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
                   <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <div>
                       <h3 className="font-bold text-slate-900 text-sm">
-                        Sync Comparison ({diffItems.length} Accounts Found)
+                        Sync Comparison ({diffItems.length} Records Found)
                       </h3>
                       <p className="text-xs text-slate-500">
-                        Review the incoming credit balances and limits before applying.
+                        Review incoming updates and differences before applying them to your records.
                       </p>
                     </div>
 
@@ -434,17 +584,74 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
                     </div>
                   </div>
 
+                  {/* Category Filter Pills */}
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                    <span className="text-xs font-medium text-slate-500 mr-1">Filter View:</span>
+                    <button
+                      onClick={() => setSelectedCategoryFilter('all')}
+                      className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                        selectedCategoryFilter === 'all'
+                          ? 'bg-slate-900 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      All Records ({diffItems.length})
+                    </button>
+
+                    {debtDiffCount > 0 && (
+                      <button
+                        onClick={() => setSelectedCategoryFilter('debt')}
+                        className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors ${
+                          selectedCategoryFilter === 'debt'
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                        }`}
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        <span>Debts ({debtDiffCount})</span>
+                      </button>
+                    )}
+
+                    {assetDiffCount > 0 && (
+                      <button
+                        onClick={() => setSelectedCategoryFilter('asset')}
+                        className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors ${
+                          selectedCategoryFilter === 'asset'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                        }`}
+                      >
+                        <Building2 className="w-3.5 h-3.5" />
+                        <span>Assets ({assetDiffCount})</span>
+                      </button>
+                    )}
+
+                    {stockDiffCount > 0 && (
+                      <button
+                        onClick={() => setSelectedCategoryFilter('stock')}
+                        className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors ${
+                          selectedCategoryFilter === 'stock'
+                            ? 'bg-purple-600 text-white shadow-xs'
+                            : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+                        }`}
+                      >
+                        <TrendingUp className="w-3.5 h-3.5" />
+                        <span>Stocks ({stockDiffCount})</span>
+                      </button>
+                    )}
+                  </div>
+
                   {/* Diff Table / Cards */}
                   <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
                     <div className="bg-slate-100 px-4 py-2.5 flex items-center justify-between text-xs font-semibold text-slate-700">
                       <div className="flex items-center gap-3">
                         <input
                           type="checkbox"
-                          checked={diffItems.length > 0 && diffItems.every(d => d.selected)}
+                          checked={visibleDiffItems.length > 0 && visibleDiffItems.every(d => d.selected)}
                           onChange={(e) => handleSelectAll(e.target.checked)}
                           className="rounded text-indigo-600 focus:ring-indigo-500"
                         />
-                        <span>Account & Lender</span>
+                        <span>Record & Details</span>
                       </div>
                       <div className="flex items-center gap-8">
                         <span className="w-48 text-right">Current Value ➔ New Value</span>
@@ -453,91 +660,142 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
                     </div>
 
                     <div className="max-h-[360px] overflow-y-auto divide-y divide-slate-100 bg-white">
-                      {diffItems.map((item) => (
-                        <div
-                          key={item.id}
-                          className={`p-3.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors ${
-                            item.selected ? 'bg-indigo-50/30' : ''
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <input
-                              type="checkbox"
-                              checked={item.selected}
-                              onChange={() => handleToggleItem(item.id)}
-                              className="mt-1 rounded text-indigo-600 focus:ring-indigo-500"
-                            />
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-slate-900 text-sm">
-                                  {item.incomingAccount.name}
-                                </span>
-                                {item.incomingAccount.lenderName && item.incomingAccount.lenderName !== item.incomingAccount.name && (
-                                  <span className="text-xs text-slate-500">
-                                    ({item.incomingAccount.lenderName})
-                                  </span>
-                                )}
-                                {item.incomingAccount.isBusiness && (
-                                  <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
-                                    Business
-                                  </span>
-                                )}
-                              </div>
+                      {visibleDiffItems.map((item) => {
+                        const itemName = item.recordType === 'debt' 
+                          ? item.incomingAccount.name
+                          : item.recordType === 'asset'
+                            ? (item.incomingAsset?.name || item.incomingAccount.name)
+                            : (item.incomingStock?.name || item.incomingAccount.name);
 
-                              {/* Details & Field Changes */}
-                              <div className="mt-1 space-y-0.5">
-                                {item.changes.filter(c => c.hasChanged).map((change, cIdx) => (
-                                  <div key={cIdx} className="text-xs flex items-center gap-1.5">
-                                    <span className="text-slate-500">{change.label}:</span>
-                                    <span className="text-slate-400 line-through">{change.oldValue}</span>
-                                    <ArrowRight className="w-3 h-3 text-indigo-500 inline" />
-                                    <span className="font-semibold text-indigo-700 bg-indigo-50 px-1 rounded">
-                                      {change.newValue}
+                        const itemSubtitle = item.recordType === 'debt'
+                          ? item.incomingAccount.lenderName
+                          : item.recordType === 'asset'
+                            ? (item.incomingAsset?.institutionName || item.incomingAsset?.category)
+                            : (item.incomingStock?.brokerageCompany || item.incomingStock?.tickerSymbol);
+
+                        const mainValue = item.recordType === 'debt'
+                          ? (item.incomingAccount.currentBalance || '$0')
+                          : item.recordType === 'asset'
+                            ? (item.incomingAsset?.currentBalance || item.incomingAsset?.assetValue || '$0')
+                            : (item.incomingStock?.currentValue || '$0');
+
+                        const secondaryDetail = item.recordType === 'debt'
+                          ? (item.incomingAccount.creditLimit ? `Limit: ${item.incomingAccount.creditLimit}` : undefined)
+                          : item.recordType === 'asset'
+                            ? (item.incomingAsset?.category ? `Type: ${item.incomingAsset.category}` : undefined)
+                            : (item.incomingStock?.amountInvested ? `Cost: ${item.incomingStock.amountInvested}` : undefined);
+
+                        return (
+                          <div
+                            key={item.id}
+                            className={`p-3.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors ${
+                              item.selected ? 'bg-indigo-50/30' : ''
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="checkbox"
+                                checked={item.selected}
+                                onChange={() => handleToggleItem(item.id)}
+                                className="mt-1 rounded text-indigo-600 focus:ring-indigo-500"
+                              />
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {/* Type Badge */}
+                                  {item.recordType === 'debt' && (
+                                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-indigo-100 text-indigo-700 flex items-center gap-1">
+                                      <CreditCard className="w-3 h-3" /> Debt
                                     </span>
-                                  </div>
-                                ))}
+                                  )}
+                                  {item.recordType === 'asset' && (
+                                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                                      <Building2 className="w-3 h-3" /> Asset
+                                    </span>
+                                  )}
+                                  {item.recordType === 'stock' && (
+                                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-purple-100 text-purple-700 flex items-center gap-1">
+                                      <TrendingUp className="w-3 h-3" /> Stock
+                                    </span>
+                                  )}
 
-                                {item.action === 'UNCHANGED' && (
-                                  <div className="text-xs text-slate-400">
-                                    Balance: {item.incomingAccount.currentBalance} (No changes detected)
+                                  <span className="font-semibold text-slate-900 text-sm">
+                                    {itemName}
+                                  </span>
+
+                                  {itemSubtitle && itemSubtitle !== itemName && (
+                                    <span className="text-xs text-slate-500">
+                                      ({itemSubtitle})
+                                    </span>
+                                  )}
+
+                                  {item.recordType === 'stock' && item.incomingStock?.tickerSymbol && (
+                                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                                      {item.incomingStock.tickerSymbol}
+                                    </span>
+                                  )}
+
+                                  {item.incomingAccount?.isBusiness && (
+                                    <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                      Business
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Details & Field Changes */}
+                                <div className="mt-1 space-y-0.5">
+                                  {item.changes.filter(c => c.hasChanged).map((change, cIdx) => (
+                                    <div key={cIdx} className="text-xs flex items-center gap-1.5">
+                                      <span className="text-slate-500">{change.label}:</span>
+                                      <span className="text-slate-400 line-through">{change.oldValue}</span>
+                                      <ArrowRight className="w-3 h-3 text-indigo-500 inline" />
+                                      <span className="font-semibold text-indigo-700 bg-indigo-50 px-1 rounded">
+                                        {change.newValue}
+                                      </span>
+                                    </div>
+                                  ))}
+
+                                  {item.action === 'UNCHANGED' && (
+                                    <div className="text-xs text-slate-400">
+                                      Value: {mainValue} (Already in sync)
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-8">
+                              <div className="w-48 text-right text-xs">
+                                <span className="font-bold text-slate-900">
+                                  {mainValue}
+                                </span>
+                                {secondaryDetail && (
+                                  <div className="text-slate-500 text-[11px]">
+                                    {secondaryDetail}
                                   </div>
+                                )}
+                              </div>
+
+                              <div className="w-20 text-center">
+                                {item.action === 'CREATE' && (
+                                  <span className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-emerald-100 text-emerald-700">
+                                    + NEW
+                                  </span>
+                                )}
+                                {item.action === 'UPDATE' && (
+                                  <span className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-amber-100 text-amber-800">
+                                    UPDATE
+                                  </span>
+                                )}
+                                {item.action === 'UNCHANGED' && (
+                                  <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-slate-100 text-slate-600">
+                                    SAME
+                                  </span>
                                 )}
                               </div>
                             </div>
                           </div>
-
-                          <div className="flex items-center gap-8">
-                            <div className="w-48 text-right text-xs">
-                              <span className="font-bold text-slate-900">
-                                {item.incomingAccount.currentBalance || '$0'}
-                              </span>
-                              {item.incomingAccount.creditLimit && (
-                                <div className="text-slate-500 text-[11px]">
-                                  Limit: {item.incomingAccount.creditLimit}
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="w-20 text-center">
-                              {item.action === 'CREATE' && (
-                                <span className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-emerald-100 text-emerald-700">
-                                  + NEW
-                                </span>
-                              )}
-                              {item.action === 'UPDATE' && (
-                                <span className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-amber-100 text-amber-800">
-                                  UPDATE
-                                </span>
-                              )}
-                              {item.action === 'UNCHANGED' && (
-                                <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-slate-100 text-slate-600">
-                                  SAME
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -570,11 +828,11 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
                         className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl shadow-md transition-all flex items-center gap-2"
                       >
                         {isProcessing ? (
-                          <span>Updating Records...</span>
+                          <span>Applying Updates...</span>
                         ) : (
                           <>
                             <Check className="w-4 h-4" />
-                            <span>1-Click Apply ({selectedCount} Selected Updates)</span>
+                            <span>1-Click Apply ({selectedCount} Updates)</span>
                           </>
                         )}
                       </button>
@@ -592,10 +850,10 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
 
                   <div>
                     <h3 className="text-2xl font-bold text-slate-900">
-                      Debts & Balances Successfully Synchronized!
+                      Synchronization Completed Successfully!
                     </h3>
                     <p className="text-sm text-slate-600 max-w-md mx-auto mt-2">
-                      {latestSnapshot?.summaryText || 'Your debt balances and accounts have been updated.'}
+                      {latestSnapshot?.summaryText || 'Your records have been synchronized and updated.'}
                     </p>
                   </div>
 
@@ -608,7 +866,7 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
                           Did something look inaccurate?
                         </h4>
                         <p className="text-xs text-amber-700 mt-0.5">
-                          You can instantly roll back all changes from this sync to their exact prior values.
+                          You can instantly roll back all updates from this sync to their exact prior values.
                         </p>
                         {latestSnapshot && !latestSnapshot.isReverted && (
                           <button
@@ -654,37 +912,94 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
                 <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                 <div className="text-sm text-blue-950">
-                  <p className="font-semibold text-blue-900">Bi-directional Synchronization:</p>
+                  <p className="font-semibold text-blue-900">Universal Bi-directional Synchronization:</p>
                   <p className="text-slate-700 mt-1">
-                    Export your Next Steps debts (credit cards, mortgages, auto loans, personal loans) to import or sync into <strong>"What's My Credit Worth"</strong> to keep both systems 100% aligned.
+                    Export your debts, assets, real estate, and stock holdings formatted specifically for <strong>"What's My Credit Worth"</strong> to keep both systems 100% aligned with complete financial accuracy.
                   </p>
                 </div>
               </div>
 
+              {/* Export Scope Selector */}
+              <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                <span className="text-xs font-medium text-slate-500 mr-2">Export Scope:</span>
+                <button
+                  onClick={() => setExportScope('all')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                    exportScope === 'all'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  All Categories ({existingDebts.length + existingAssets.length + existingStocks.length})
+                </button>
+                <button
+                  onClick={() => setExportScope('debt')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                    exportScope === 'debt'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Debts ({existingDebts.length})
+                </button>
+                <button
+                  onClick={() => setExportScope('asset')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                    exportScope === 'asset'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Assets ({existingAssets.length})
+                </button>
+                <button
+                  onClick={() => setExportScope('stock')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                    exportScope === 'stock'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Stocks ({existingStocks.length})
+                </button>
+              </div>
+
               {/* Summary Stats */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
-                  <div className="text-xs text-slate-500">Total Debt Accounts</div>
-                  <div className="text-xl font-bold text-slate-900 mt-1">{existingDebts.length}</div>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
-                  <div className="text-xs text-slate-500">Total Current Balance</div>
-                  <div className="text-xl font-bold text-red-600 mt-1">
-                    {formatCurrencyVal(existingDebts.reduce((sum, d) => sum + (parseFloat(String(d.currentBalance || '0').replace(/[^0-9.-]+/g, '')) || 0), 0))}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-center">
+                  <div className="text-xs text-slate-500">Total Debt Balance</div>
+                  <div className="text-lg font-bold text-red-600 mt-0.5">
+                    {formatCurrencyVal(totalDebtBalance)}
                   </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">{existingDebts.length} accounts</div>
                 </div>
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
-                  <div className="text-xs text-slate-500">Total Credit Limit</div>
-                  <div className="text-xl font-bold text-emerald-600 mt-1">
-                    {formatCurrencyVal(existingDebts.reduce((sum, d) => sum + (parseFloat(String(d.creditLimit || '0').replace(/[^0-9.-]+/g, '')) || 0), 0))}
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-center">
+                  <div className="text-xs text-slate-500">Total Asset Value</div>
+                  <div className="text-lg font-bold text-emerald-600 mt-0.5">
+                    {formatCurrencyVal(totalAssetValue)}
                   </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">{existingAssets.length} assets</div>
+                </div>
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-center">
+                  <div className="text-xs text-slate-500">Total Stock Portfolio</div>
+                  <div className="text-lg font-bold text-purple-600 mt-0.5">
+                    {formatCurrencyVal(totalStockValue)}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">{existingStocks.length} holdings</div>
+                </div>
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-center">
+                  <div className="text-xs text-slate-500">Estimated Net Worth</div>
+                  <div className="text-lg font-bold text-slate-900 mt-0.5">
+                    {formatCurrencyVal(netWorthCalculated)}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Assets + Stocks - Debt</div>
                 </div>
               </div>
 
               {/* Actions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button
-                  onClick={() => downloadCreditWorthJSON(records, userEmail)}
+                  onClick={() => downloadCreditWorthJSON(records, userEmail, exportScope)}
                   className="p-5 border-2 border-indigo-100 hover:border-indigo-500 bg-indigo-50/50 hover:bg-indigo-50 rounded-2xl flex items-center gap-4 transition-all text-left group"
                 >
                   <div className="p-3 bg-indigo-600 text-white rounded-xl group-hover:scale-105 transition-transform">
@@ -719,11 +1034,11 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
               {/* Code Preview */}
               <div>
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1.5">
-                  <span>Payload Preview:</span>
+                  <span>Payload Preview ({exportScope.toUpperCase()}):</span>
                   <span className="text-slate-400">JSON Format (v2.0)</span>
                 </div>
                 <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl text-xs font-mono overflow-x-auto max-h-48">
-                  {JSON.stringify(generateCreditWorthExportPayload(records, userEmail), null, 2)}
+                  {JSON.stringify(generateCreditWorthExportPayload(records, userEmail, exportScope), null, 2)}
                 </pre>
               </div>
             </div>
@@ -762,13 +1077,17 @@ export const CreditWorthSyncModal: React.FC<CreditWorthSyncModalProps> = ({
                     const date = new Date(snap.timestamp).toLocaleString();
                     const updatedCount = Object.keys(snap.previousRecordStates).length;
                     const createdCount = snap.createdRecordIds.length;
+                    const typesLabel = snap.typesAffected?.map(t => t.toUpperCase()).join(', ') || 'RECORDS';
 
                     return (
                       <div key={snap.id} className="p-4 bg-white hover:bg-slate-50 flex items-center justify-between transition-colors">
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-slate-900 text-sm">{snap.sourceApp}</span>
                             <span className="text-xs text-slate-400">• {date}</span>
+                            <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              {typesLabel}
+                            </span>
                             {snap.isReverted ? (
                               <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-200 text-slate-600">
                                 REVERTED

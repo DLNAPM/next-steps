@@ -84,9 +84,13 @@ export default function CategoryList({ type, title, description }: CategoryListP
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (type === 'debt') {
+    if (type === 'debt' || type === 'asset' || type === 'stock') {
       const snap = getLatestActiveSnapshot();
-      setActiveSnapshot(snap);
+      if (snap && (!snap.typesAffected || snap.typesAffected.includes(type))) {
+        setActiveSnapshot(snap);
+      } else {
+        setActiveSnapshot(null);
+      }
     }
   }, [type, records]);
 
@@ -95,7 +99,7 @@ export default function CategoryList({ type, title, description }: CategoryListP
     try {
       const res = await undoSyncSnapshot(activeSnapshot.id, updateRecord, deleteRecord);
       if (res.success) {
-        setUndoFeedback(`Successfully reverted ${res.revertedUpdates} updated debts.`);
+        setUndoFeedback(`Successfully reverted ${res.revertedUpdates} updated records.`);
         setActiveSnapshot(null);
         setTimeout(() => setUndoFeedback(null), 5000);
       }
@@ -164,11 +168,11 @@ export default function CategoryList({ type, title, description }: CategoryListP
           <p className="text-slate-500 mt-1">{description}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {type === 'debt' && (
+          {(type === 'debt' || type === 'asset' || type === 'stock') && (
             <button
               onClick={() => setIsCreditWorthModalOpen(true)}
               className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 text-indigo-700 border border-indigo-200 rounded-xl font-semibold transition-all shadow-xs text-sm"
-              title="Transfer balances & limits directly from What's My Credit Worth"
+              title={`Transfer ${type === 'asset' ? 'assets & property' : type === 'stock' ? 'stocks & investments' : 'debts & balances'} directly from What's My Credit Worth`}
             >
               <Sparkles className="w-4 h-4 text-indigo-600" />
               <span>Sync from "What's My Credit Worth"</span>
@@ -185,7 +189,7 @@ export default function CategoryList({ type, title, description }: CategoryListP
       </div>
 
       {/* Undo Notification Banner for What's My Credit Worth Sync */}
-      {type === 'debt' && activeSnapshot && !activeSnapshot.isReverted && (
+      {(type === 'debt' || type === 'asset' || type === 'stock') && activeSnapshot && !activeSnapshot.isReverted && (
         <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-300">
           <div className="flex items-start sm:items-center gap-3">
             <div className="p-2 bg-amber-100 text-amber-800 rounded-xl">
@@ -591,11 +595,12 @@ export default function CategoryList({ type, title, description }: CategoryListP
         </div>
       )}
 
-      {type === 'debt' && (
+      {(type === 'debt' || type === 'asset' || type === 'stock') && (
         <CreditWorthSyncModal
           isOpen={isCreditWorthModalOpen}
           onClose={() => setIsCreditWorthModalOpen(false)}
           records={records}
+          targetType={type}
           addRecord={addRecord}
           updateRecord={updateRecord}
           deleteRecord={deleteRecord}
