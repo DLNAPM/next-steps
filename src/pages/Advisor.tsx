@@ -801,42 +801,55 @@ Do not give formal legal or tax advice, but provide educational guidance based o
 
       {/* Input Area */}
       <div className="p-4 border-t border-slate-200 bg-white print:hidden">
-        <div className="flex gap-3">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder={activeSession ? `Ask a follow-up question in "${activeSession.name}"...` : "Ask about your financial data or estate planning scenarios..."}
-            className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-            disabled={isLoading}
-          />
+        <div className="flex gap-3 items-end">
+          <div className="flex-1 relative">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              rows={3}
+              placeholder={activeSession ? `Ask a follow-up question in "${activeSession.name}"... (Shift + Enter for new line)` : "Ask about your financial data or estate planning scenarios... (Shift + Enter for new line)"}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all resize-y min-h-[72px] max-h-48 overflow-y-auto custom-scrollbar text-sm sm:text-base leading-relaxed"
+              disabled={isLoading}
+            />
+          </div>
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="px-5 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center shadow-sm"
+            className="px-5 py-3.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center shadow-sm shrink-0 mb-1"
+            title="Send question (Enter)"
           >
             <Send className="w-5 h-5" />
           </button>
         </div>
-        {activeSession ? (
-          <div className="flex items-center justify-between text-xs text-slate-500 mt-2 px-1">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs text-slate-500 mt-2 px-1">
+          {activeSession ? (
             <span className="flex items-center gap-1.5 text-indigo-700 font-medium">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Continuing saved session: <strong className="text-slate-800 font-semibold">{activeSession.name}</strong> • Follow-up answers are saved automatically.
             </span>
-            <button 
-              onClick={startNewSession}
-              className="text-xs text-slate-500 hover:text-indigo-600 underline font-medium cursor-pointer"
-            >
-              Start New Chat
-            </button>
+          ) : (
+            <p className="text-xs text-slate-400">
+              AI Advisor provides educational guidance based on your uploaded financial data, not formal legal or tax advice.
+            </p>
+          )}
+          <div className="flex items-center gap-3 self-end sm:self-auto text-[11px] text-slate-400">
+            <span>Shift + Enter for new line • Enter to send</span>
+            {activeSession && (
+              <button 
+                onClick={startNewSession}
+                className="text-xs text-indigo-600 hover:text-indigo-800 underline font-medium cursor-pointer"
+              >
+                Start New Chat
+              </button>
+            )}
           </div>
-        ) : (
-          <p className="text-xs text-slate-400 mt-2 text-center">
-            AI Advisor provides educational guidance based on your uploaded financial data, not formal legal or tax advice.
-          </p>
-        )}
+        </div>
       </div>
 
       {/* Save Modal */}
