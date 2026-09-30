@@ -10,6 +10,7 @@ import {
   signOut as firebaseSignOut, 
   onAuthStateChanged 
 } from 'firebase/auth';
+import { Capacitor } from '@capacitor/core';
 import { auth, googleProvider, db, isFirebaseConfigured } from '../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { UserProfile } from '../types';
@@ -59,6 +60,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             err?.message?.includes('missing initial state') ||
             err?.message?.includes('sessionStorage')
           ) {
+            try {
+              if (typeof window !== 'undefined' && window.sessionStorage) {
+                window.sessionStorage.clear();
+              }
+            } catch (_) {}
             setAuthError(
               "Android / Storage Partitioning Notice: Mobile Chrome restricts cross-site session storage for Google redirects. Please use the Email & Password login below for guaranteed instant access."
             );
@@ -155,19 +161,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setAuthError(null);
+
+    // During authentication when testing in Android Studio / WebViews, wipe sessionStorage
+    // to prevent 'Unable to process request due to missing initial state' errors
     try {
-      await signInWithPopup(auth, googleProvider);
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        window.sessionStorage.clear();
+      }
+    } catch (clearErr) {
+      console.warn("Could not wipe sessionStorage before authentication:", clearErr);
+    }
+
+    try {
+      // If running inside the Android App / WebView or Capacitor, use signInWithPopup:
+      const isMobileAppOrWebView = 
+        Capacitor.isNativePlatform() || 
+        (typeof window !== 'undefined' && (
+          window.navigator.userAgent.includes('wv') ||
+          (window as any).Capacitor?.isNativePlatform?.() ||
+          (window.navigator.userAgent.includes('Android') && (window.navigator.userAgent.includes('Version/') || window.navigator.userAgent.includes('wv')))
+        ));
+
+      if (isMobileAppOrWebView) {
+        await signInWithPopup(auth, googleProvider);
+      } else {
+        await signInWithRedirect(auth, googleProvider);
+      }
     } catch (error: any) {
       console.error("Error signing in with Google:", error);
       const errorCode = error?.code || '';
       const errorMessage = error?.message || '';
 
+      // If missing initial state error occurs, wipe sessionStorage immediately
       if (
         errorCode === 'auth/missing-initial-state' ||
         errorMessage.includes('missing initial state') ||
         errorMessage.includes('sessionStorage') ||
         errorCode === 'auth/web-storage-unsupported'
       ) {
+        try {
+          if (typeof window !== 'undefined' && window.sessionStorage) {
+            window.sessionStorage.clear();
+          }
+        } catch (_) {}
         setAuthError(
           "Android / Mobile Browser Notice: Chrome on Android blocks cross-site session storage for Google popups. Please sign in using Email & Password below, or enable third-party cookies in Chrome Settings > Site Settings."
         );
