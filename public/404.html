@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Next Steps</title>
+    <script>
+      // Single Page Application redirect for static hosts (Render, GitHub Pages)
+      // Redirects any direct URL access (like /login or /reports) back to index.html with route preservation
+      (function() {
+        var path = window.location.pathname;
+        var search = window.location.search;
+        var hash = window.location.hash;
+        // If requesting /login, redirect cleanly to root /
+        if (path === '/login' || path === '/login/') {
+          window.location.replace('/' + (search || '') + (hash || ''));
+        } else {
+          window.location.replace('/' + (search || '') + (hash || ''));
+        }
+      })();
+    </script>
+  </head>
+  <body style="margin: 0; font-family: system-ui, -apple-system, sans-serif; background-color: #f8fafc; color: #1e293b; display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+    <div style="text-align: center; padding: 2rem;">
+      <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; color: #4338ca;">Next Steps</h2>
+      <p style="color: #64748b; font-size: 0.95rem;">Loading application...</p>
+    </div>
+  </body>
+</html>

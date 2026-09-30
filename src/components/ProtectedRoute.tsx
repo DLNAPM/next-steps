@@ -1,6 +1,6 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import Login from '../pages/Login';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -12,7 +12,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Login />;
   }
 
   if (user.isFrozen) {
@@ -24,7 +24,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
             Your account has been temporarily frozen. Please contact the administrator for more details or to restore access.
           </p>
           <button
-            onClick={() => window.location.href = '/login'}
+            onClick={() => window.location.href = '/'}
             className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition"
           >
             Return to Login
