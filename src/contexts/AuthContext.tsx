@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isFirebaseConfigured && auth) {
-      // Handle redirect authentication response if returning from redirect flow
+      // Process any pending redirect results if returning from an external redirect
       getRedirectResult(auth)
         .then((result) => {
           if (result?.user) {
@@ -54,21 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         })
         .catch((err: any) => {
-          console.warn("getRedirectResult result error/notice:", err);
-          if (
-            err?.code === 'auth/missing-initial-state' ||
-            err?.message?.includes('missing initial state') ||
-            err?.message?.includes('sessionStorage')
-          ) {
-            try {
-              if (typeof window !== 'undefined' && window.sessionStorage) {
-                window.sessionStorage.clear();
-              }
-            } catch (_) {}
-            setAuthError(
-              "Android / Storage Partitioning Notice: Mobile Chrome restricts cross-site session storage for Google redirects. Please use the Email & Password login below for guaranteed instant access."
-            );
-          }
+          // Normal loads or cancelled redirects should not raise alarms
+          console.log("Redirect check:", err?.code || 'none');
         });
 
       const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -162,8 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setAuthError(null);
 
-    // During authentication when testing in Android Studio / WebViews, wipe sessionStorage
-    // to prevent 'Unable to process request due to missing initial state' errors
+    // Wipe any stale sessionStorage keys prior to popup authentication
     try {
       if (typeof window !== 'undefined' && window.sessionStorage) {
         window.sessionStorage.clear();
@@ -173,26 +159,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      // If running inside the Android App / WebView or Capacitor, use signInWithPopup:
-      const isMobileAppOrWebView = 
-        Capacitor.isNativePlatform() || 
-        (typeof window !== 'undefined' && (
-          window.navigator.userAgent.includes('wv') ||
-          (window as any).Capacitor?.isNativePlatform?.() ||
-          (window.navigator.userAgent.includes('Android') && (window.navigator.userAgent.includes('Version/') || window.navigator.userAgent.includes('wv')))
-        ));
-
-      if (isMobileAppOrWebView) {
-        await signInWithPopup(auth, googleProvider);
-      } else {
-        await signInWithRedirect(auth, googleProvider);
-      }
+      // Always use signInWithPopup for Web, Android WebViews, and Mobile.
+      // signInWithPopup stays in the current window and avoids the redirect loop on custom/Render domains.
+      await signInWithPopup(auth, googleProvider);
     } catch (error: any) {
       console.error("Error signing in with Google:", error);
       const errorCode = error?.code || '';
       const errorMessage = error?.message || '';
 
-      // If missing initial state error occurs, wipe sessionStorage immediately
+      if (errorCode === 'auth/popup-closed-by-user') {
+        setAuthError(null);
+        return;
+      }
+
+      if (errorCode === 'auth/popup-blocked') {
+        setAuthError("Pop-up was blocked by your browser. Please allow popups for this site, or sign in using Email & Password below.");
+        return;
+      }
+
       if (
         errorCode === 'auth/missing-initial-state' ||
         errorMessage.includes('missing initial state') ||
@@ -205,24 +189,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } catch (_) {}
         setAuthError(
-          "Android / Mobile Browser Notice: Chrome on Android blocks cross-site session storage for Google popups. Please sign in using Email & Password below, or enable third-party cookies in Chrome Settings > Site Settings."
+          "Mobile browser storage blocked Google sign-in. Please sign in using Email & Password below, or enable third-party cookies in browser settings."
         );
-      } else if (errorCode === 'auth/popup-blocked') {
-        // Try redirect as fallback if popup was blocked
-        try {
-          await signInWithRedirect(auth, googleProvider);
-          return;
-        } catch (redirErr: any) {
-          console.error("Redirect sign-in error:", redirErr);
-          setAuthError("Popup was blocked by your browser. Please allow popups or use Email & Password below.");
-        }
-      } else if (errorCode === 'auth/popup-closed-by-user') {
-        setAuthError(null);
-      } else if (errorCode === 'auth/unauthorized-domain') {
-        setAuthError("This domain is not yet in Firebase Console > Authentication > Settings > Authorized domains. You can sign in with Email & Password below in the meantime.");
-      } else {
-        setAuthError(errorMessage || "Failed to sign in with Google. You can sign in with Email & Password below.");
+        return;
       }
+
+      if (errorCode === 'auth/unauthorized-domain') {
+        setAuthError("This domain is not yet in Firebase Console > Authentication > Settings > Authorized domains. You can sign in with Email & Password below in the meantime.");
+        return;
+      }
+
+      setAuthError(errorMessage || "Failed to sign in with Google. You can sign in with Email & Password below.");
     }
   };
 
