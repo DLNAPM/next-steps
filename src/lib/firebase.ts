@@ -1,5 +1,12 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { 
+  getAuth, 
+  initializeAuth, 
+  indexedDBLocalPersistence, 
+  browserLocalPersistence, 
+  browserPopupRedirectResolver, 
+  GoogleAuthProvider 
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
@@ -20,8 +27,33 @@ const app = (firebaseConfig.apiKey && !getApps().length)
   ? initializeApp(firebaseConfig) 
   : (getApps().length ? getApp() : null);
 
-export const auth = app ? getAuth(app) : null;
+// Initialize Auth with IndexedDB persistence first (resilient to Android tab unloading & session partition)
+let initializedAuth = null;
+if (app) {
+  try {
+    if (typeof window !== 'undefined') {
+      initializedAuth = initializeAuth(app, {
+        persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+        popupRedirectResolver: browserPopupRedirectResolver,
+      });
+    } else {
+      initializedAuth = getAuth(app);
+    }
+  } catch (_e) {
+    // If auth was already initialized by Firebase internally, fallback to getAuth
+    try {
+      initializedAuth = getAuth(app);
+    } catch (_err) {
+      console.warn("Could not retrieve initialized Firebase Auth instance");
+    }
+  }
+}
+
+export const auth = initializedAuth;
 export const db = app ? getFirestore(app) : null;
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
 
 export const isFirebaseConfigured = !!app;
