@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useForm } from 'react-hook-form';
-import { FinancialRecord, AssetRecord, StockRecord, DebtRecord, InsuranceRecord, TrustRecord, RecordType } from '../types';
-import { Plus, Trash2, ExternalLink, Edit2, X, ChevronDown, ChevronUp, Briefcase, HelpCircle, ArrowRightLeft, CreditCard, TrendingDown, TrendingUp, DollarSign, RotateCcw, Sparkles } from 'lucide-react';
+import { FinancialRecord, AssetRecord, StockRecord, DebtRecord, InsuranceRecord, TrustRecord, BusinessRecord, RecordType } from '../types';
+import { Plus, Trash2, ExternalLink, Edit2, X, ChevronDown, ChevronUp, Briefcase, HelpCircle, ArrowRightLeft, CreditCard, TrendingDown, TrendingUp, DollarSign, RotateCcw, Sparkles, Copy, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link, useLocation } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
@@ -74,6 +74,7 @@ export default function CategoryList({ type, title, description }: CategoryListP
   const [activeSnapshot, setActiveSnapshot] = useState<SyncSnapshot | null>(null);
   const [undoFeedback, setUndoFeedback] = useState<string | null>(null);
   const [editingRecord, setEditingRecord] = useState<FinancialRecord | null>(null);
+  const [duplicateSource, setDuplicateSource] = useState<FinancialRecord | null>(null);
   const [duplicateResolution, setDuplicateResolution] = useState<{
     existing: FinancialRecord,
     newData: any,
@@ -146,11 +147,19 @@ export default function CategoryList({ type, title, description }: CategoryListP
 
   const openAddModal = () => {
     setEditingRecord(null);
+    setDuplicateSource(null);
     setIsModalOpen(true);
   };
 
   const openEditModal = (record: FinancialRecord) => {
     setEditingRecord(record);
+    setDuplicateSource(null);
+    setIsModalOpen(true);
+  };
+
+  const openDuplicateModal = (record: FinancialRecord) => {
+    setEditingRecord(null);
+    setDuplicateSource(record);
     setIsModalOpen(true);
   };
 
@@ -312,6 +321,7 @@ export default function CategoryList({ type, title, description }: CategoryListP
               record={record} 
               isHighlighted={highlightedId === record.id}
               onEdit={() => openEditModal(record)} 
+              onDuplicate={() => openDuplicateModal(record)} 
               onDelete={() => handleDelete(record.id)} 
             />
           ))
@@ -615,8 +625,12 @@ export default function CategoryList({ type, title, description }: CategoryListP
         <RecordFormModal
           type={type}
           initialData={editingRecord}
+          duplicateSource={duplicateSource}
           defaultIsBusiness={activeTab === 'business'}
-          onClose={() => setIsModalOpen(false)}
+          onClose={() => {
+            setIsModalOpen(false);
+            setDuplicateSource(null);
+          }}
           onSubmit={async (data) => {
             // Remove undefined fields to prevent Firebase errors
             const cleanData = Object.fromEntries(
@@ -631,6 +645,7 @@ export default function CategoryList({ type, title, description }: CategoryListP
               } else {
                 await updateRecord(editingRecord.id, cleanData);
                 setIsModalOpen(false);
+                setDuplicateSource(null);
               }
             } else {
               const duplicate = records.find(r => r.name.toLowerCase() === (cleanData as any).name.toLowerCase() && r.type === type);
@@ -640,6 +655,7 @@ export default function CategoryList({ type, title, description }: CategoryListP
               } else {
                 await addRecord({ ...cleanData, type } as any);
                 setIsModalOpen(false);
+                setDuplicateSource(null);
               }
             }
           }}
@@ -647,13 +663,35 @@ export default function CategoryList({ type, title, description }: CategoryListP
       )}
 
       {duplicateResolution && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Duplicate Record Found</h3>
-            <p className="text-slate-600 mb-6">
-              A record named "{duplicateResolution.newData.name}" already exists. Would you like to update the existing record with this new information, or keep your current record and discard these changes?
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2.5 bg-amber-100 text-amber-700 rounded-xl">
+                <Copy className="w-5 h-5" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">Duplicate Record Found</h3>
+            </div>
+            <p className="text-slate-600 mb-6 text-sm">
+              A record named <strong className="text-slate-900">"{duplicateResolution.newData.name}"</strong> already exists. Would you like to save this as a separate copy, update the existing record, or discard?
             </p>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={async () => {
+                  let copyName = `${duplicateResolution.newData.name} (Copy)`;
+                  let counter = 2;
+                  while (records.some(r => r.name.toLowerCase() === copyName.toLowerCase() && r.type === type)) {
+                    copyName = `${duplicateResolution.newData.name} (Copy ${counter})`;
+                    counter++;
+                  }
+                  await addRecord({ ...duplicateResolution.newData, name: copyName, type } as any);
+                  setDuplicateResolution(null);
+                  setDuplicateSource(null);
+                }}
+                className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 flex items-center justify-center gap-2 shadow-xs transition"
+              >
+                <Copy className="w-4 h-4" />
+                <span>Save as Separate Copy</span>
+              </button>
               <button
                 onClick={async () => {
                   await updateRecord(duplicateResolution.existing.id, duplicateResolution.newData);
@@ -661,16 +699,18 @@ export default function CategoryList({ type, title, description }: CategoryListP
                     await deleteRecord(duplicateResolution.editingRecordId);
                   }
                   setDuplicateResolution(null);
+                  setDuplicateSource(null);
                 }}
-                className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700"
+                className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition"
               >
                 Update Existing Record
               </button>
               <button
                 onClick={() => {
                   setDuplicateResolution(null);
+                  setDuplicateSource(null);
                 }}
-                className="w-full py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl font-medium hover:bg-slate-50"
+                className="w-full py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition"
               >
                 Keep Current Record (Discard New)
               </button>
@@ -685,9 +725,10 @@ export default function CategoryList({ type, title, description }: CategoryListP
 const RecordCard: React.FC<{ 
   record: FinancialRecord; 
   onEdit: () => void; 
+  onDuplicate: () => void;
   onDelete: () => void;
   isHighlighted?: boolean;
-}> = ({ record, onEdit, onDelete, isHighlighted }) => {
+}> = ({ record, onEdit, onDuplicate, onDelete, isHighlighted }) => {
   const [expanded, setExpanded] = useState(false);
   const { isSharedRecord, records, updateRecord } = useData();
   const isShared = isSharedRecord(record);
@@ -774,10 +815,17 @@ const RecordCard: React.FC<{
           >
             <ArrowRightLeft className="w-4 h-4" />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg">
+          <button 
+            onClick={(e) => { e.stopPropagation(); onDuplicate(); }} 
+            className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+            title="Duplicate / Copy this record to create a new one"
+          >
+            <Copy className="w-4 h-4" />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg" title="Edit this record">
             <Edit2 className="w-4 h-4" />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg" title="Delete this record">
             <Trash2 className="w-4 h-4" />
           </button>
           <button className="p-2 text-slate-400">
@@ -1070,6 +1118,7 @@ type FormData = {
   // Debt specific
   controlNumber?: string;
   stateUrl?: string;
+  lenderName?: string;
   // Insurance specific
   companyName?: string;
   amount?: string;
@@ -1088,9 +1137,10 @@ type FormData = {
   ownerDetails?: string;
 };
 
-function RecordFormModal({ type, initialData, onClose, onSubmit, defaultIsBusiness = false }: { 
+function RecordFormModal({ type, initialData, duplicateSource = null, onClose, onSubmit, defaultIsBusiness = false }: { 
   type: RecordType; 
   initialData: FinancialRecord | null; 
+  duplicateSource?: FinancialRecord | null;
   onClose: () => void; 
   onSubmit: (data: any) => void;
   defaultIsBusiness?: boolean;
@@ -1100,8 +1150,24 @@ function RecordFormModal({ type, initialData, onClose, onSubmit, defaultIsBusine
     .filter(r => r.type === 'business')
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
-    defaultValues: (initialData as any) || {
+  const existingRecords = records.filter(r => r.type === type);
+  const otherFinancialRecords = records.filter(r => r.type !== type && (r.type === 'asset' || r.type === 'debt' || r.type === 'stock'));
+
+  const getInitialDefaults = (): FormData => {
+    if (initialData) {
+      return initialData as any;
+    }
+    if (duplicateSource) {
+      const copyName = duplicateSource.name ? `${duplicateSource.name} (Copy)` : '';
+      return {
+        ...(duplicateSource as any),
+        name: copyName,
+        id: undefined,
+        createdAt: undefined,
+        updatedAt: undefined,
+      };
+    }
+    return {
       name: '',
       notes: '',
       accountNumber: '',
@@ -1120,7 +1186,14 @@ function RecordFormModal({ type, initialData, onClose, onSubmit, defaultIsBusine
       associatedBusinessId: '',
       category: type === 'asset' ? 'bank' : type === 'debt' ? 'mortgage' : type === 'business' ? 'llc' : undefined,
       trustType: type === 'trust' ? 'revocable' : undefined,
-    }
+    };
+  };
+
+  const [selectedDuplicateId, setSelectedDuplicateId] = useState<string>(duplicateSource ? duplicateSource.id : '');
+  const [activeDuplicateRecord, setActiveDuplicateRecord] = useState<FinancialRecord | null>(duplicateSource || null);
+
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormData>({
+    defaultValues: getInitialDefaults()
   });
 
   const category = watch('category');
@@ -1132,6 +1205,98 @@ function RecordFormModal({ type, initialData, onClose, onSubmit, defaultIsBusine
 
   const liveGainLoss = calculateGainLoss(amountInvested, currentValue);
   const liveMarketWatchUrl = generateMarketWatchUrl(tickerSymbol);
+
+  const handleSelectDuplicate = (id: string) => {
+    setSelectedDuplicateId(id);
+    if (!id) {
+      setActiveDuplicateRecord(null);
+      return;
+    }
+    const source = records.find(r => r.id === id);
+    if (!source) return;
+    setActiveDuplicateRecord(source);
+
+    setValue('name', `${source.name} (Copy)`);
+    setValue('notes', source.notes || '');
+    setValue('isBusiness', !!source.isBusiness);
+    setValue('associatedBusinessId', source.associatedBusinessId || '');
+    setValue('accountNumber', (source as any).accountNumber || '');
+    setValue('url', source.url || '');
+    if ((source as any).category) setValue('category', (source as any).category);
+    if ((source as any).currentBalance) setValue('currentBalance', (source as any).currentBalance);
+    if ((source as any).balanceAsOf) setValue('balanceAsOf', (source as any).balanceAsOf);
+    if ((source as any).creditLimit) setValue('creditLimit', (source as any).creditLimit);
+    if ((source as any).startBalance) setValue('startBalance', (source as any).startBalance);
+
+    if (type === 'stock') {
+      const s = source as any;
+      setValue('tickerSymbol', s.tickerSymbol || '');
+      setValue('stockCompanyName', s.stockCompanyName || s.name || '');
+      setValue('amountInvested', s.amountInvested || '');
+      setValue('currentValue', s.currentValue || '');
+      setValue('brokerageCompany', s.brokerageCompany || '');
+      setValue('websiteUrl', s.websiteUrl || '');
+      const ticker = (s.tickerSymbol || '').toUpperCase();
+      const comp = s.stockCompanyName || s.name || '';
+      setValue('name', ticker ? `${ticker} - ${comp} (Copy)` : `${comp} (Copy)`);
+    } else if (type === 'asset') {
+      const a = source as any;
+      setValue('institutionName', a.institutionName || '');
+      setValue('assetValue', a.assetValue || a.currentValue || a.currentBalance || '');
+      setValue('purchasePrice', a.purchasePrice || '');
+      setValue('currentValue', a.currentValue || '');
+      setValue('deedUrl', a.deedUrl || '');
+      setValue('countyClerkUrl', a.countyClerkUrl || '');
+      setValue('autoCheckUrl', a.autoCheckUrl || '');
+    } else if (type === 'debt') {
+      const d = source as any;
+      setValue('controlNumber', d.controlNumber || '');
+      setValue('stateUrl', d.stateUrl || '');
+      setValue('lenderName', d.lenderName || d.institutionName || '');
+    } else if (type === 'insurance') {
+      const i = source as any;
+      setValue('companyName', i.companyName || '');
+      setValue('amount', i.amount || '');
+      setValue('representativeName', i.representativeName || '');
+      setValue('representativeContact', i.representativeContact || '');
+    } else if (type === 'trust') {
+      const t = source as any;
+      setValue('trustType', t.trustType || 'revocable');
+      setValue('trusteeDetails', t.trusteeDetails || '');
+    } else if (type === 'business') {
+      const b = source as any;
+      setValue('ein', b.ein || '');
+      setValue('taxId', b.taxId || '');
+      setValue('formationDate', b.formationDate || '');
+      setValue('stateOfFormation', b.stateOfFormation || '');
+      setValue('ownerDetails', b.ownerDetails || '');
+    }
+  };
+
+  const handleClearDuplicate = () => {
+    setSelectedDuplicateId('');
+    setActiveDuplicateRecord(null);
+    reset({
+      name: '',
+      notes: '',
+      accountNumber: '',
+      url: '',
+      currentBalance: '',
+      balanceAsOf: '',
+      creditLimit: '',
+      startBalance: '',
+      purchasePrice: '',
+      currentValue: '',
+      tickerSymbol: '',
+      stockCompanyName: '',
+      amountInvested: '',
+      brokerageCompany: '',
+      isBusiness: defaultIsBusiness,
+      associatedBusinessId: '',
+      category: type === 'asset' ? 'bank' : type === 'debt' ? 'mortgage' : type === 'business' ? 'llc' : undefined,
+      trustType: type === 'trust' ? 'revocable' : undefined,
+    });
+  };
 
   const handleFormSubmit = (data: FormData) => {
     if (type === 'stock') {
@@ -1159,8 +1324,17 @@ function RecordFormModal({ type, initialData, onClose, onSubmit, defaultIsBusine
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
-          <h3 className="text-xl font-bold text-slate-900">
-            {initialData ? 'Edit' : 'Add'} {type === 'asset' ? 'Asset' : type === 'stock' ? 'Stock Holding' : type === 'debt' ? 'Debt' : type === 'insurance' ? 'Insurance Policy' : type === 'business' ? 'Business Entity' : 'Family Trust & Will'}
+          <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            {initialData ? (
+              <>Edit {type === 'asset' ? 'Asset' : type === 'stock' ? 'Stock Holding' : type === 'debt' ? 'Debt' : type === 'insurance' ? 'Insurance Policy' : type === 'business' ? 'Business Entity' : 'Family Trust & Will'}</>
+            ) : activeDuplicateRecord ? (
+              <>
+                <Copy className="w-5 h-5 text-indigo-600" />
+                <span>Duplicate {type === 'asset' ? 'Asset' : type === 'stock' ? 'Stock Holding' : type === 'debt' ? 'Debt' : type === 'insurance' ? 'Policy' : type === 'business' ? 'Entity' : 'Trust/Will'}</span>
+              </>
+            ) : (
+              <>Add {type === 'asset' ? 'Asset' : type === 'stock' ? 'Stock Holding' : type === 'debt' ? 'Debt' : type === 'insurance' ? 'Insurance Policy' : type === 'business' ? 'Business Entity' : 'Family Trust & Will'}</>
+            )}
           </h3>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full">
             <X className="w-5 h-5 text-slate-500" />
@@ -1168,6 +1342,80 @@ function RecordFormModal({ type, initialData, onClose, onSubmit, defaultIsBusine
         </div>
         
         <form onSubmit={handleSubmit(handleFormSubmit)} className="p-6 space-y-6">
+          {/* Copy/Duplicate Selector Banner */}
+          {!initialData && (existingRecords.length > 0 || otherFinancialRecords.length > 0) && (
+            <div className="p-4 bg-gradient-to-r from-indigo-50/90 via-slate-50 to-blue-50/70 rounded-2xl border border-indigo-100 shadow-2xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-xs">
+                    <Copy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                      Copy / Duplicate from Existing Record
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      Pre-populate all fields from an existing {type === 'asset' ? 'asset' : type === 'stock' ? 'stock' : type === 'debt' ? 'debt' : 'record'}
+                    </p>
+                  </div>
+                </div>
+                {activeDuplicateRecord && (
+                  <button
+                    type="button"
+                    onClick={handleClearDuplicate}
+                    className="self-start sm:self-auto px-2.5 py-1 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 rounded-lg transition-colors shadow-2xs"
+                  >
+                    Clear / Start Fresh
+                  </button>
+                )}
+              </div>
+
+              <div className="relative">
+                <select
+                  value={selectedDuplicateId}
+                  onChange={(e) => handleSelectDuplicate(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-indigo-200 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-xs"
+                >
+                  <option value="">-- Choose an existing record to duplicate / copy --</option>
+                  {existingRecords.length > 0 && (
+                    <optgroup label={`Existing ${type === 'asset' ? 'Assets' : type === 'stock' ? 'Stocks' : type === 'debt' ? 'Debts' : type.toUpperCase() + 's'}`}>
+                      {existingRecords.map((rec) => (
+                        <option key={rec.id} value={rec.id}>
+                          {rec.type === 'stock' && (rec as StockRecord).tickerSymbol 
+                            ? `${(rec as StockRecord).tickerSymbol.toUpperCase()} - ${(rec as StockRecord).stockCompanyName || rec.name}` 
+                            : rec.name}
+                          {rec.isBusiness ? ' [Business]' : ' [Personal]'}
+                          {(rec as any).currentBalance ? ` • Balance: ${(rec as any).currentBalance}` : ''}
+                          {(rec as any).currentValue ? ` • Value: ${(rec as any).currentValue}` : ''}
+                          {(rec as any).assetValue ? ` • Asset: ${(rec as any).assetValue}` : ''}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {otherFinancialRecords.length > 0 && (
+                    <optgroup label="Other Categories (Asset / Debt / Stock)">
+                      {otherFinancialRecords.map((rec) => (
+                        <option key={rec.id} value={rec.id}>
+                          [{rec.type.toUpperCase()}] {rec.name}
+                          {(rec as any).currentBalance ? ` • ${(rec as any).currentBalance}` : ''}
+                          {(rec as any).currentValue ? ` • ${(rec as any).currentValue}` : ''}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              </div>
+
+              {activeDuplicateRecord && (
+                <div className="mt-2.5 flex items-start sm:items-center gap-2 p-2.5 bg-white/80 rounded-xl border border-indigo-200/80 text-xs text-indigo-900 font-medium">
+                  <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5 sm:mt-0" />
+                  <span>
+                    Duplicating from <strong>{activeDuplicateRecord.name}</strong>. Details pre-filled into the form below. You can edit any field before saving.
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
           <div className="space-y-4">
             <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
               <input 
