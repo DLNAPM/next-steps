@@ -881,9 +881,20 @@ const RecordCard: React.FC<{
             
             {record.type !== 'stock' && (record as any).url && (
               <div>
-                <span className="font-semibold text-slate-700 block mb-1">Website</span>
+                <span className="font-semibold text-slate-700 block mb-1">
+                  {record.type === 'debt' ? 'Payment / Website Portal' : 'Website'}
+                </span>
                 <a href={(record as any).url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1">
                   Visit Link <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            )}
+
+            {record.type === 'debt' && (record as DebtRecord).stateUrl && (
+              <div>
+                <span className="font-semibold text-slate-700 block mb-1">State Filing / Registry</span>
+                <a href={(record as DebtRecord).stateUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1">
+                  View State Filing <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
             )}
@@ -1003,6 +1014,12 @@ const RecordCard: React.FC<{
                   <div>
                      <span className="font-semibold text-slate-700 block mb-1">Deed Document</span>
                      <a href={(record as AssetRecord).deedUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1">View Deed <ExternalLink className="w-3 h-3" /></a>
+                  </div>
+                )}
+                {(record as AssetRecord).countyClerkUrl && (
+                  <div>
+                     <span className="font-semibold text-slate-700 block mb-1">County Clerk Search</span>
+                     <a href={(record as AssetRecord).countyClerkUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1">County Clerk Records <ExternalLink className="w-3 h-3" /></a>
                   </div>
                 )}
               </>
